@@ -1,0 +1,6 @@
+/results/backup/*
+/.idea
+/.Rhistory
+
+/input-data/*
+/input-settings/*
