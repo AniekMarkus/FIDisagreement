@@ -10,17 +10,42 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_squared_error, balanced_accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from python.models import *
+from models import *
 
 import torch
 import torch.nn as nn
-from python.sage_utils import Surrogate, MaskLayer1d, KLDivLoss
+from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # TODO: set (changing) seed in shap methods?
 
+### WRAPPER FUNCTIONS
+# TODO: check stability results/ different values per run?
+
+def permutation_auc(model, X, y):
+    # TODO:choose which one to use compute_permutation(model, X_subset, y_subset, scoring = 'roc_auc')
+    return compute_permutation_custom(model, X, y, scoring='roc_auc')
+
+def permutation_mse(model, X, y):
+    return compute_permutation_custom(model, X, y, scoring='neg_mean_squared_error')
+
+def permutation_ba(model, X, y):
+    return compute_permutation_custom(model, X, y, scoring='balanced_accuracy')
+
+# TODO: check implementations SHAP
+def kernelshap_500(model, X, y):
+    return compute_kernelshap(model, X, samples=500)
+
+def shap_marginal500(model, X, y):
+    return  compute_sage(model, X, y, samples=500, removal='marginal', binary_outcome=True)
+
+def shap_conditional(model, X, y):
+    return compute_sage(model, X, y, removal='surrogate', binary_outcome=True)
+
+
+### HELP FUNCTIONS
 def compute_permutation(model, X, y, scoring='roc_auc'):
     print("Busy with permutation FI")
     start_time = time.time()
@@ -34,17 +59,18 @@ def compute_permutation(model, X, y, scoring='roc_auc'):
 
     return permutation_values, elapsed_time
 
+
 def compute_permutation_custom(model, X, y, scoring='roc_auc'):
     print("Busy with permutation custom FI")
 
     start_time = time.time()
 
     if scoring == 'roc_auc':
-        perf_full_mod = roc_auc_score(y.iloc[:, 0], model.predict_proba(X.values)[:, 1])
+        perf_full_mod = roc_auc_score(y, model.predict_proba(X.values)[:, 1])
     elif scoring == 'neg_mean_squared_error':
-        perf_full_mod = -1 * mean_squared_error(y.iloc[:, 0], model.predict_proba(X.values)[:, 1], squared=False)  # RMSE
+        perf_full_mod = -1 * mean_squared_error(y, model.predict_proba(X.values)[:, 1], squared=False)  # RMSE
     elif scoring == 'balanced_accuracy':
-        perf_full_mod = balanced_accuracy_score(y.iloc[:, 0], (model.predict_proba(X.values)[:, 1] >= 0.1).astype(int))
+        perf_full_mod = balanced_accuracy_score(y, (model.predict_proba(X.values)[:, 1] >= 0.1).astype(int))
 
     # Initialize a list of results
     results = []
@@ -64,11 +90,11 @@ def compute_permutation_custom(model, X, y, scoring='roc_auc'):
         # TODO: check warning y_pred contains classes not in y_true
 
         if scoring == 'roc_auc':
-            new_perf = roc_auc_score(y.iloc[:, 0], model.predict_proba(X_temp.values)[:, 1])
+            new_perf = roc_auc_score(y, model.predict_proba(X_temp.values)[:, 1])
         elif scoring == 'neg_mean_squared_error':
-            new_perf = -1 * mean_squared_error(y.iloc[:, 0], model.predict_proba(X_temp.values)[:, 1], squared=False)  # RMSE
+            new_perf = -1 * mean_squared_error(y, model.predict_proba(X_temp.values)[:, 1], squared=False)  # RMSE
         elif scoring == 'balanced_accuracy':
-            new_perf = balanced_accuracy_score(y.iloc[:, 0],
+            new_perf = balanced_accuracy_score(y,
                                                (model.predict_proba(X_temp.values)[:, 1] >= 0.1).astype(int))
 
         # Append the decrease in perf to the list of results

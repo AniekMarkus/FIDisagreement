@@ -7,7 +7,7 @@ import sklearn
 import matplotlib.pyplot as plt
 from scipy.stats import kendalltau
 
-from python.help_functions import *
+from help_functions import *
 
 # code based on evaluation metrics OpenXAI: https://github.com/AI4LIFE-GROUP/OpenXAI
 
