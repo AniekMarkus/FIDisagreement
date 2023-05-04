@@ -60,7 +60,8 @@ def fit_logistic(X_train, y_train):
 
 def fit_xgboost(X_train, y_train):
     # train an XGBoost model with early stopping
-    data = xgboost.DMatrix(X_train, label=y_train)
+    X_input = X_train.values
+    data = xgboost.DMatrix(X_input, label=y_train)
 
     ml_model = xgboost.train(
         {"eta": 0.001, "subsample": 0.5, "max_depth": 2, "objective": "binary:logistic"},

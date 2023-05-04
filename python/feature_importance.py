@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 import torch
 import torch.nn as nn
-# from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
+from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
 
 from help_functions import *
 
@@ -35,14 +35,17 @@ def permutation_ba(model, X, y):
     return compute_permutation_custom(model, X, y, scoring='balanced_accuracy')
 
 # TODO: check implementations SHAP
-def kernelshap_500(model, X, y):
-    return compute_kernelshap(model, X, samples=500)
+def kernelshap(model, X, y):
+    fi_values, elapsed_time = compute_kernelshap(model, X, samples=100)
+    return fi_values.mean(axis=0), elapsed_time
 
-def shap_marginal500(model, X, y):
-    return  compute_sage(model, X, y, samples=500, removal='marginal', binary_outcome=True)
+def sage_marginal(model, X, y):
+    fi_values, elapsed_time = compute_sage(model, X, y, samples=100, removal='marginal', binary_outcome=True)
+    return fi_values.values, elapsed_time
 
-def shap_conditional(model, X, y):
-    return compute_sage(model, X, y, removal='surrogate', binary_outcome=True)
+def sage_conditional(model, X, y):
+    fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', binary_outcome=True)
+    return fi_values.values, elapsed_time
 
 
 ### HELP FUNCTIONS

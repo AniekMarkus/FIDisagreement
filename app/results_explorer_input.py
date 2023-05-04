@@ -23,10 +23,10 @@ color_dict = {'coefficient': '#ecda9a',
               'permutation_mse': '#f66356',
               'permutation_accuracy': '#f7945d',
               'permutation_ba': '#f97b57',
-              'kernelshap_500': '#96d2a4',
-              'kernelshap_1000': '#4da284',
-              'marginalsage_1000': '#68abb8',
-              'conditionalsage_1000': '#2a5674'}
+              'kernelshap': '#96d2a4',
+              #'kernelshap_1000': '#4da284',
+              'sage_marginal': '#68abb8',
+              'sage_conditional': '#2a5674'}
 # defaults ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
 fileName = output_folder / "data" / "modify_params.csv"

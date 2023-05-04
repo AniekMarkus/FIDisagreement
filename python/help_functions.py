@@ -35,7 +35,7 @@ def wrapper_predict(ml_model, X, prob=True):
             pred_prob = pred_prob.detach().numpy()
     else:
         if ml_model.name == "xgboost":
-            data_x = xgboost.DMatrix(X)
+            data_x = xgboost.DMatrix(X.values)
             pred_prob = ml_model.predict(data_x)
         elif ml_model.name == "logistic":
             data_x = X.values
