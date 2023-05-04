@@ -7,6 +7,10 @@ import warnings
 
 import matplotlib.pyplot as plt
 
+import torch
+import torch.nn as nn
+import xgboost
+
 # from sklearn_gbmi import *  # friedman H statistic
 from sklearn.ensemble import GradientBoostingRegressor  # friedman H statistic
 
@@ -23,6 +27,25 @@ def normalise(array):
         return array
 
 
+def wrapper_predict(ml_model, X, prob=True):
+    if ml_model.name == 'nn':
+        with torch.no_grad():
+            data_x = torch.tensor(X.values, dtype=torch.float32)
+            pred_prob = ml_model(data_x)
+            pred_prob = pred_prob.detach().numpy()
+    else:
+        if ml_model.name == "xgboost":
+            data_x = xgboost.DMatrix(X)
+            pred_prob = ml_model.predict(data_x)
+        elif ml_model.name == "logistic":
+            data_x = X.values
+            pred_prob = ml_model.predict_proba(data_x)
+            pred_prob = pred_prob[:, 1]
+
+    if prob:
+        return pred_prob
+    else:
+        return np.where(pred_prob < 0.5, 0, 1)
 
 def correlation(x1, x2):
     E_x1 = np.mean(x1)

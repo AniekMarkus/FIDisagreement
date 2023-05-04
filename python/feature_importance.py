@@ -10,11 +10,11 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_squared_error, balanced_accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from models import *
-
 import torch
 import torch.nn as nn
-from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
+# from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
+
+from help_functions import *
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -60,17 +60,21 @@ def compute_permutation(model, X, y, scoring='roc_auc'):
     return permutation_values, elapsed_time
 
 
-def compute_permutation_custom(model, X, y, scoring='roc_auc'):
+def compute_permutation_custom(ml_model, X, y, scoring='roc_auc'):
     print("Busy with permutation custom FI")
 
     start_time = time.time()
 
     if scoring == 'roc_auc':
-        perf_full_mod = roc_auc_score(y, model.predict_proba(X.values)[:, 1])
+        pred = wrapper_predict(ml_model, X)
+        perf_full_mod = roc_auc_score(y, pred)
     elif scoring == 'neg_mean_squared_error':
-        perf_full_mod = -1 * mean_squared_error(y, model.predict_proba(X.values)[:, 1], squared=False)  # RMSE
+        # pred = ml_model.predict_proba(X.values)[:, 1]
+        pred = wrapper_predict(ml_model, X)
+        perf_full_mod = -1 * mean_squared_error(y, pred, squared=False)  # RMSE
     elif scoring == 'balanced_accuracy':
-        perf_full_mod = balanced_accuracy_score(y, (model.predict_proba(X.values)[:, 1] >= 0.1).astype(int))
+        pred = wrapper_predict(ml_model, X, prob=False)
+        perf_full_mod = balanced_accuracy_score(y, pred)
 
     # Initialize a list of results
     results = []
@@ -90,12 +94,14 @@ def compute_permutation_custom(model, X, y, scoring='roc_auc'):
         # TODO: check warning y_pred contains classes not in y_true
 
         if scoring == 'roc_auc':
-            new_perf = roc_auc_score(y, model.predict_proba(X_temp.values)[:, 1])
+            pred_temp = wrapper_predict(ml_model, X_temp)
+            new_perf = roc_auc_score(y, pred_temp)
         elif scoring == 'neg_mean_squared_error':
-            new_perf = -1 * mean_squared_error(y, model.predict_proba(X_temp.values)[:, 1], squared=False)  # RMSE
+            pred_temp = wrapper_predict(ml_model, X_temp)
+            new_perf = -1 * mean_squared_error(y, pred_temp, squared=False)  # RMSE
         elif scoring == 'balanced_accuracy':
-            new_perf = balanced_accuracy_score(y,
-                                               (model.predict_proba(X_temp.values)[:, 1] >= 0.1).astype(int))
+            pred_temp = wrapper_predict(ml_model, X_temp, prob=False)
+            new_perf = balanced_accuracy_score(y, pred_temp)
 
         # Append the decrease in perf to the list of results
         results.append({'pred': predictor,
@@ -165,7 +171,7 @@ def compute_kernelshap(model, X, samples=1000):
     # X_summary = shap.kmeans(X, 50)
     X_summary = shap.sample(X, samples)
     # explainer = shap.KernelExplainer(model.predict, X_summary)
-    explainer = shap.KernelExplainer(model.predict_proba, X_summary)
+    explainer = shap.KernelExplainer(model.predict_proba, X_summary) # TODO: check how predict wrapper works here
 
     # kernelshap_values = explainer.shap_values(X_summary)[1]
     # kernelshap_values = explainer.shap_values(X_summary, l1_reg='num_features(10)')[1]
@@ -195,7 +201,7 @@ def compute_sage(model, X, y, samples=1000, removal='marginal', binary_outcome=T
         X_summary = shap.sample(X, samples)
 
         # Marginalizing out removed features with their marginal distribution
-        imputer = sage.MarginalImputer(model, X_summary)
+        imputer = sage.MarginalImputer(model, X_summary) # TODO: check how predict wrapper works here
 
     elif removal == 'surrogate':
         # Conditional distribution inspired from https://github.com/iancovert/fastshap/blob/main/notebooks/census.ipynb
