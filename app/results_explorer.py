@@ -19,7 +19,7 @@ navbar = html.Div(
             children=[
                 html.A(
                     "Feature Importance Explorer",
-                    href="https://github.com/aniekmarkus/featureimportance",
+                    href="https://github.com/AniekMarkus/FIDisagreement",
                     style={
                         "text-decoration": "none",
                         "color": "inherit",

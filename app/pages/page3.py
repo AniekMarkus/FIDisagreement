@@ -8,7 +8,7 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 
-from app.results_explorer_input import output_folder, data_reference, final_evaluation, color_dict
+from app.results_explorer_input import output_folder, datasets, color_dict
 import app.results_explorer_utils as drc
 import app.results_explorer_figures as figs
 
@@ -25,10 +25,10 @@ layout = html.Div(id="app-container",  # id="app-container",
                                         drc.NamedDropdown(
                                             name="Select Dataset",
                                             id="dropdown-select-dataset",
-                                            options=final_evaluation.name.unique(),
+                                            options=datasets,
                                             clearable=False,
                                             searchable=False,
-                                            value=final_evaluation.name.unique()[0],
+                                            value=datasets[0],
                                         ),
                                     ],
                                 ),
@@ -59,7 +59,9 @@ def update_graph_p3(
         dataset
 ):
     fi_correlation = figs.data_correlogram(output_folder, dataset)
-    data_ref = pd.DataFrame(data_reference.loc[data_reference.name == dataset, :])
+    # data_ref = pd.DataFrame(data_reference.loc[data_reference.name == dataset, :])
+
+    # TODO: Histograms of pairwise Pearson correlations between the covariates?
 
     return [
         html.Div(
@@ -70,14 +72,14 @@ def update_graph_p3(
                 style={'float': 'none'},
             ),
         ),
-        html.Div(
-            id="graph-container3b",
-            children=[
-                dcc.Loading(
-                    className="graph-wrapper",
-                    children=dash_table.DataTable(data_ref.to_dict('records'), [{"name": "data" + str(i), "id": i} for i in data_ref.columns]),
-                    style={'float': 'none'},
-                ),
-            ],
-        ),
+        # html.Div(
+        #     id="graph-container3b",
+        #     children=[
+        #         dcc.Loading(
+        #             className="graph-wrapper",
+        #             children=dash_table.DataTable(data_ref.to_dict('records'), [{"name": "data" + str(i), "id": i} for i in data_ref.columns]),
+        #             style={'float': 'none'},
+        #         ),
+        #     ],
+        # ),
     ]

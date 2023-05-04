@@ -5,10 +5,7 @@ dash.register_page(__name__)
 from dash import dcc, html, dash_table,  Input, Output, callback
 from dash.dependencies import Input, Output, State
 
-import pandas as pd
-import numpy as np
-
-from app.results_explorer_input import output_folder, data_reference, final_evaluation, color_dict
+from app.results_explorer_input import output_folder, datasets, versions, models, fimethods, metrics, color_dict
 import app.results_explorer_utils as drc
 import app.results_explorer_figures as figs
 
@@ -25,68 +22,47 @@ layout = html.Div(id="app-container",  # id="app-container",
                                         drc.NamedDropdown(
                                             name="Select Dataset",
                                             id="dropdown-select-dataset",
-                                            options=final_evaluation.name.unique(),
+                                            options=datasets,
                                             clearable=False,
                                             searchable=False,
-                                            value=final_evaluation.name.unique()[0],
+                                            value=datasets[0],
+                                        ),
+                                        drc.NamedDropdown(
+                                            name="Select Version",
+                                            id="dropdown-select-version",
+                                            options=versions,
+                                            clearable=False,
+                                            searchable=False,
+                                            value=versions[0],
                                         ),
                                         drc.NamedDropdown(
                                             name="Select Model",
                                             id="dropdown-select-model",
-                                            options=final_evaluation.model.unique(),
+                                            options=models,
                                             clearable=False,
                                             searchable=False,
-                                            value=final_evaluation.model.unique()[0],
+                                            value=models[0],
                                         ),
                                         drc.NamedDropdown(
                                             name="Select FI Method",
                                             id="dropdown-select-fimethod",
-                                            options=final_evaluation.fi_meth1.append(final_evaluation.fi_meth2).unique().tolist(),
+                                            options=fimethods,
                                             clearable=False,
                                             searchable=False,
-                                            value=final_evaluation.fi_meth1.append(final_evaluation.fi_meth2).unique().tolist(), # ["permutation", "shap", "kernelshap", "sage"]
+                                            value=fimethods,
                                             multi=True,
                                         ),
                                         drc.NamedDropdown(
                                             name="Select Metrics",
                                             id="dropdown-select-metrics",
-                                            options=final_evaluation.columns[~final_evaluation.columns.isin(['name', 'model', 'fi_meth1', 'fi_meth2', 'fi_meth'])],
+                                            options=metrics,
                                             clearable=False,
                                             searchable=False,
-                                            value=final_evaluation.columns[~final_evaluation.columns.isin(['name', 'model', 'fi_meth1', 'fi_meth2', 'fi_meth'])],
+                                            value=metrics,
                                             multi=True,
                                         ),
                                     ],
-                                ),
-                                drc.Card(
-                                    id="second-card",
-                                    children=[
-                                        drc.NamedSlider(
-                                            name="Sample Size",
-                                            id="slider-dataset-sample-size",
-                                            min=0,
-                                            max=5000,
-                                            step=1000,
-                                            marks={
-                                                str(i): str(i)
-                                                for i in [1000, 2000, 3000, 4000, 5000]
-                                            },
-                                            value=300,
-                                        ),
-                                        drc.NamedSlider(
-                                            name="Informative Features",
-                                            id="slider-dataset-informative-features",
-                                            min=0,
-                                            max=1,
-                                            marks={
-                                                i / 10: str(i / 10)
-                                                for i in range(0, 11, 2)
-                                            },
-                                            step=0.1,
-                                            value=0.2,
-                                        ),
-                                    ],
-                                ),
+                                )
                             ],
                         ),
                         html.Div(
@@ -108,6 +84,7 @@ layout = html.Div(id="app-container",  # id="app-container",
     Output("div-graphs", "children"),
     [
         Input("dropdown-select-dataset", "value"),
+        Input("dropdown-select-version", "value"),
         Input("dropdown-select-model", "value"),
         Input("dropdown-select-fimethod", "value"),
         Input("dropdown-select-metrics", "value")
@@ -115,15 +92,15 @@ layout = html.Div(id="app-container",  # id="app-container",
 )
 def update_graph_top(
         dataset,
+        version,
         model,
         fimethod,
         metrics
 ):
-    fi_plot = figs.serve_fi_visualization(output_folder, color_dict, dataset, fimethod)
-    fi_rank = figs.fi_ranking(output_folder, dataset, fimethod)
-    fi_top = figs.fi_topfeatures(output_folder, color_dict, dataset, fimethod, k=10)
-    fi_metrics = figs.serve_fi_metrics(color_dict, final_evaluation, dataset, model, fimethod, metrics)
-    data_ref = pd.DataFrame(data_reference.loc[data_reference.name == dataset, :])
+    fi_plot = figs.fi_values(output_folder, color_dict, dataset, version, model, fimethod)
+    fi_rank = figs.fi_ranking(output_folder, color_dict, dataset, version, model, fimethod)
+    fi_top = figs.fi_topfeatures(output_folder, color_dict, dataset, version, model, fimethod, k=10)
+    fi_metrics = figs.fi_metrics(output_folder, color_dict, dataset, version, model, fimethod, metrics)
 
     return [
         html.Div(
@@ -163,15 +140,5 @@ def update_graph_top(
                     style={'float': 'none'},
                 ),
             ],
-        ),
-        html.Div(
-            id="graph-container3",
-            children=[
-                dcc.Loading(
-                    className="graph-wrapper",
-                    children=dash_table.DataTable(data_ref.to_dict('records'), [{"name": "data" + str(i), "id": i} for i in data_ref.columns]),
-                    style={'float': 'none'},
-                ),
-            ],
-        ),
+        )
     ]
