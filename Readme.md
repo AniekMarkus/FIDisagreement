@@ -1,6 +1,9 @@
 ## Install :
-```
 
+TODO: To install the core environment dependencies of OpenXAI, use `pip` by cloning this repo into your local environment:
+
+```bash
+pip install -e . 
 ```
 
 
