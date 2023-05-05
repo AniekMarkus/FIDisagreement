@@ -1,30 +1,19 @@
 
 # Modules
-import argparse
-import importlib
-
-import joblib
 import numpy as np
 import pandas as pd
-import torch
-import random
 import os
-import pickle
-import shutil
+
+import argparse
+
 import re
-from scipy.io import arff
-from sklearn import metrics
 
 from pathlib import Path
 from datetime import date
 
-os.environ["CUDA_VISIBLE_DEVICES"]=""
-
 # Get functions in other Python scripts
 from evaluation_metrics import *
 
-import warnings
-warnings.filterwarnings('ignore')
 
 def aggregate(data, model, output_folder):
     fi_files = os.listdir(output_folder / "feature_importance")

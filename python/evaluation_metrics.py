@@ -1,13 +1,15 @@
 
 # Modules
 import numpy as np
-from scipy.stats import pearsonr, rankdata
-import itertools
-from scipy.special import comb
 import pandas as pd
+import os
+
+import itertools
+from scipy.stats import pearsonr, rankdata
+from scipy.special import comb
+from scipy.stats import kendalltau
 import sklearn
 import matplotlib.pyplot as plt
-from scipy.stats import kendalltau
 
 # Get functions in other Python scripts
 from help_functions import *

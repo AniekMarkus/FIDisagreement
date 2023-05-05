@@ -1,27 +1,14 @@
 
 # Modules
-import argparse
-import importlib
-# import Semantic_Meaningfulness_v2
-# from Semantic_Meaningfulness_v2 import Sematic
-# importlib.reload(Semantic_Meaningfulness_v2)
-
-import joblib
 import numpy as np
 import pandas as pd
-import torch
-import random
 import os
-import pickle
-import shutil
-import re
-from scipy.io import arff
-from sklearn import metrics
-import random
-import xgboost
 
+import argparse
+import importlib
 import torch
-import torch.nn as nn
+import random
+import re
 
 from pathlib import Path
 from datetime import date
@@ -30,27 +17,12 @@ os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 # Get functions in other Python scripts
 from help_functions import *
-from simulate_data import *
-from feature_importance import *
-from models import *
 from data import *
+from models import *
+from feature_importance import *
 
 import warnings
 warnings.filterwarnings('ignore')
-
-
-#      # TODO: compute for data folds??
-#     # cross validation to compute robust feature importance
-#     # kf = KFold(n_splits=folds)
-#     # all_coefficients = 0
-#
-#     i = 1
-#     # for incl_index, excl_index in kf.split(X_train):
-#     print('Computing FI for fold: ' + str(i))
-#     # X_subset, X_not = X_train.iloc[incl_index], X_train.iloc[excl_index]
-#     # y_subset, y_not = y_train.iloc[incl_index], y_train.iloc[excl_index]
-#     X_subset = X_train
-#     y_subset = y_train
 
 if __name__ =='__main__':
     import os

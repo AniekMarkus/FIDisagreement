@@ -1,26 +1,22 @@
 # Modules
-import shap
-import sage
 import numpy as np
 import pandas as pd
-import sklearn
-import time
+import os
 
+import shap
+import sage
+import time
+from functools import partial
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_squared_error, balanced_accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
-
 import torch
 import torch.nn as nn
 
 # Get functions in other Python scripts
-from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
-from functools import partial
 from help_functions import *
 from models import *
-
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
 
 # TODO: set (changing) seed in shap methods?
 

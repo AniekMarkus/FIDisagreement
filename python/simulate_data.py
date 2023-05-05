@@ -1,6 +1,7 @@
 # Modules
-import pandas as pd
 import numpy as np
+import pandas as pd
+import os
 
 # Get functions in other Python scripts
 
