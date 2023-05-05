@@ -11,8 +11,25 @@ import torch
 import torch.nn as nn
 import xgboost
 
+import os
+import pickle
+import shutil
+
+from sklearn import metrics
+
 # from sklearn_gbmi import *  # friedman H statistic
 from sklearn.ensemble import GradientBoostingRegressor  # friedman H statistic
+
+def setup(output_folder, clean):
+    if clean and output_folder.exists():
+        shutil.rmtree(output_folder)
+
+    if not output_folder.exists():
+        os.mkdir(output_folder)
+        os.mkdir(output_folder / "data")
+        os.mkdir(output_folder / "models")
+        os.mkdir(output_folder / "feature_importance")
+        os.mkdir(output_folder / "eval")
 
 def split_data(X, y, test_size = 0.25):
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y, random_state=2022, test_size=test_size)
@@ -30,15 +47,27 @@ def normalise(array):
 def wrapper_predict(ml_model, X, prob=True):
     if ml_model.name == 'nn':
         with torch.no_grad():
-            data_x = torch.tensor(X.values, dtype=torch.float32)
+            if not isinstance(X, np.ndarray):
+                data_x = torch.tensor(X.values, dtype=torch.float32)
+            else:
+                data_x = torch.tensor(X, dtype=torch.float32)
+
             pred_prob = ml_model(data_x)
             pred_prob = pred_prob.detach().numpy()
     else:
         if ml_model.name == "xgboost":
-            data_x = xgboost.DMatrix(X.values)
+            if not isinstance(X, np.ndarray):
+                data_x = xgboost.DMatrix(X.values)
+            else:
+                data_x = xgboost.DMatrix(X)
+
             pred_prob = ml_model.predict(data_x)
         elif ml_model.name == "logistic":
-            data_x = X.values
+            if not isinstance(X, np.ndarray):
+                data_x = X.values
+            else:
+                data_x = X
+
             pred_prob = ml_model.predict_proba(data_x)
             pred_prob = pred_prob[:, 1]
 
@@ -46,6 +75,31 @@ def wrapper_predict(ml_model, X, prob=True):
         return pred_prob
     else:
         return np.where(pred_prob < 0.5, 0, 1)
+
+
+
+def test_model(output_folder, ml_model, coef_model, X_test, y_test, model, data):
+    pred_prob = wrapper_predict(ml_model, X_test, prob=True)
+    pred_class = np.where(pred_prob < 0.5, 0, 1)
+
+    pred_outcomes = pred_class.sum()
+
+    auc_score = metrics.roc_auc_score(y_test, pred_prob)
+    auprc_score = metrics.average_precision_score(y_test, pred_prob)
+
+    performance = pd.Series({'data': data,
+                             'model': model,
+                             'coef_non-zero': (coef_model.value != 0).sum(),
+                             'pred_non-zero': pred_outcomes,
+                             'perf_auc': auc_score,
+                             'perf_auprc': auprc_score}, dtype='object')
+
+    performance.to_csv(output_folder / "models" / str(f"{data}-{model}-perf.csv"), header=False)
+
+    print("> test_data done")
+    return performance
+
+
 
 def correlation(x1, x2):
     E_x1 = np.mean(x1)

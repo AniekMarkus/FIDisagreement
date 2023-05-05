@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 import torch
 import torch.nn as nn
 from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
+from functools import partial
 
 from help_functions import *
 
@@ -34,7 +35,6 @@ def permutation_mse(model, X, y):
 def permutation_ba(model, X, y):
     return compute_permutation_custom(model, X, y, scoring='balanced_accuracy')
 
-# TODO: check implementations SHAP
 def kernelshap(model, X, y):
     fi_values, elapsed_time = compute_kernelshap(model, X, samples=100)
     return fi_values.mean(axis=0), elapsed_time
@@ -43,7 +43,7 @@ def sage_marginal(model, X, y):
     fi_values, elapsed_time = compute_sage(model, X, y, samples=100, removal='marginal', binary_outcome=True)
     return fi_values.values, elapsed_time
 
-def sage_conditional(model, X, y):
+def sage_conditional(model, X, y): # TODO: check implementations
     fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', binary_outcome=True)
     return fi_values.values, elapsed_time
 
@@ -174,11 +174,16 @@ def compute_kernelshap(model, X, samples=1000):
     # X_summary = shap.kmeans(X, 50)
     X_summary = shap.sample(X, samples)
     # explainer = shap.KernelExplainer(model.predict, X_summary)
-    explainer = shap.KernelExplainer(model.predict_proba, X_summary) # TODO: check how predict wrapper works here
+
+    wrapper_predict_model = partial(wrapper_predict, model)  # model is used as first argument -> ml_model
+    explainer = shap.KernelExplainer(wrapper_predict_model, X_summary)
 
     # kernelshap_values = explainer.shap_values(X_summary)[1]
     # kernelshap_values = explainer.shap_values(X_summary, l1_reg='num_features(10)')[1]
-    kernelshap_values = explainer.shap_values(X_summary, nsamples=10 * X.shape[1] + 2048, l1_reg='num_features(10)')[1]
+    kernelshap_values = explainer.shap_values(X_summary, nsamples=10 * X.shape[1] + 2048, l1_reg='num_features(10)')
+
+    if model.name == "nn": # this model outputs a list (of 1 array)
+        kernelshap_values = kernelshap_values[0]
 
     # visualize the first prediction's explanation
     # shap.plots.waterfall(kernelshap_values[0])

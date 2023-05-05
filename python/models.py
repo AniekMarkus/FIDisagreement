@@ -34,6 +34,25 @@ from help_functions import *
 import warnings
 warnings.filterwarnings('ignore')
 
+def get_model(output_folder, X_train, y_train, model, data, rerun):
+    model_folder = output_folder / "models"
+
+    if rerun:
+        # Train
+        ml_model, coef_model = globals()[f"fit_{model}"](X_train, y_train)
+
+        # Save
+        joblib.dump(ml_model, model_folder / str(f"{data}-{model}-model.pkl"))
+        coef_model.to_csv(output_folder / "models" / str(f"{data}-{model}-coef.csv"), index=True)
+
+    else:
+        # Load
+        file_name = model_folder / str(f"{data}-{model}-model.pkl")
+        ml_model = joblib.load(file_name)
+        coef_model = pd.read_csv(output_folder / "models" / str(f"{data}-{model}-coef.csv"))
+
+    print("> get_model done")
+    return ml_model, coef_model
 
 def fit_linear(X_train, y_train):
     ml_model = sklearn.linear_model.LinearRegression(random_state=2022)
