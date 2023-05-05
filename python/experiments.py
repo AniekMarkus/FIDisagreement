@@ -139,7 +139,7 @@ if __name__ =='__main__':
             # Do not run remaining analysis if data empty after modification
             if X_train_p.shape[0] > 0 and X_train_p.shape[1] > 0:
                 # Get ML model
-                ml_model, coef_model = get_model(output_folder, X_train_p, y_train_p, args.model, data, args.run_model)
+                ml_model, coef_model = get_model(X_train_p, y_train_p, args.model, data, output_folder, args.run_model)
                 performance = test_model(output_folder, ml_model, coef_model, X_test_p, y_test_p, args.model, data)
 
                 # Compute FI

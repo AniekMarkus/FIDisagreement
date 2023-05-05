@@ -16,6 +16,7 @@ from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
 from functools import partial
 
 from help_functions import *
+from models import *
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -25,27 +26,97 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 ### WRAPPER FUNCTIONS
 # TODO: check stability results/ different values per run?
 
-def permutation_auc(model, X, y):
-    # TODO:choose which one to use compute_permutation(model, X_subset, y_subset, scoring = 'roc_auc')
-    return compute_permutation_custom(model, X, y, scoring='roc_auc')
+def permutation_auc(model, X, y, convergence=False):
+    if convergence:
+        wrapper_fi = partial(compute_permutation_custom, model, X, y, 'roc_auc') # model, X, y, score used as arguments
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 1, 1)
+    else:
+        fi_values, elapsed_time = compute_permutation_custom(model, X, y, scoring='roc_auc', repeat=10)
 
-def permutation_mse(model, X, y):
-    return compute_permutation_custom(model, X, y, scoring='neg_mean_squared_error')
+    return fi_values, elapsed_time
 
-def permutation_ba(model, X, y):
-    return compute_permutation_custom(model, X, y, scoring='balanced_accuracy')
+def permutation_mse(model, X, y, convergence=False):
+    if convergence:
+        wrapper_fi = partial(compute_permutation_custom, model, X, y, 'neg_mean_squared_error') # model, X, y, score used as arguments
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 1, 1)
+    else:
+        fi_values, elapsed_time = compute_permutation_custom(model, X, y, scoring='neg_mean_squared_error', repeat=10)
 
-def kernelshap(model, X, y):
-    fi_values, elapsed_time = compute_kernelshap(model, X, samples=100)
-    return fi_values.mean(axis=0), elapsed_time
+    return fi_values, elapsed_time
 
-def sage_marginal(model, X, y):
-    fi_values, elapsed_time = compute_sage(model, X, y, samples=100, removal='marginal', binary_outcome=True)
-    return fi_values.values, elapsed_time
+def permutation_ba(model, X, y, convergence=False):
+    if convergence:
+        wrapper_fi = partial(compute_permutation_custom, model, X, y, 'balanced_accuracy')  # model, X, y, score used as arguments
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 1, 1)
+    else:
+        fi_values, elapsed_time = compute_permutation_custom(model, X, y, scoring='balanced_accuracy', repeat=10)
 
-def sage_conditional(model, X, y): # TODO: check implementations
-    fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', binary_outcome=True)
-    return fi_values.values, elapsed_time
+    return fi_values, elapsed_time
+
+
+def kernelshap(model, X, y, convergence=True):
+    if convergence:
+        wrapper_fi = partial(compute_kernelshap, model, X)  # model, X used as arguments
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 100, 100)
+    else:
+        fi_values, elapsed_time = compute_kernelshap(model, X, samples=100) # TODO: change default, e.g. 3000?
+
+    return fi_values, elapsed_time
+
+
+def sage_marginal(model, X, y, convergence=False):
+    if convergence:
+        wrapper_fi = partial(compute_sage, model, X, y, 'marginal')  # model, X, y used as arguments
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
+    else:
+        fi_values, elapsed_time = compute_sage(model, X, y, removal='marginal', samples=100) # TODO: change default
+
+    return fi_values, elapsed_time
+
+
+def sage_conditional(model, X, y, convergence=False): # TODO: check implementations
+    if convergence:
+        wrapper_fi = partial(compute_sage, model, X, y, 'surrogate')  # model, X, y used as arguments
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
+    else:
+        fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', samples=100) # TODO: change default
+
+    return fi_values, elapsed_time
+
+
+def loco_auc(model, X, y):
+    return compute_loco_custom(model, X, y, scoring='roc_auc')
+
+def loco_mse(model, X, y):
+    return compute_loco_custom(model, X, y, scoring='neg_mean_squared_error')
+
+def loco_ba(model, X, y):
+    return compute_loco_custom(model, X, y, scoring='balanced_accuracy')
+
+def check_convergence(wrapper_fi, start, step, stop=0.025):
+    # Start values
+    fi_values, elapsed_time = wrapper_fi(start)
+    value=start+step
+    converged=False
+
+    while not converged:
+        fi_values_new, elapsed_time_new = wrapper_fi(value)
+
+        dist = np.linalg.norm(fi_values-fi_values_new)
+
+        # Check if L2 distance smaller than stop
+        if dist < stop:
+            print("Converged at " + str(value))
+            converged=True
+        else:
+            print("Distance at " + str(value) + " is " + str(dist))
+
+            # Update values for next round
+            value=value+step
+            fi_values = fi_values_new
+
+    return fi_values_new, elapsed_time_new
+
 
 
 ### HELP FUNCTIONS
@@ -63,7 +134,7 @@ def compute_permutation(model, X, y, scoring='roc_auc'):
     return permutation_values, elapsed_time
 
 
-def compute_permutation_custom(ml_model, X, y, scoring='roc_auc'):
+def compute_permutation_custom(ml_model, X, y, scoring='roc_auc', repeat=1):
     print("Busy with permutation custom FI")
 
     start_time = time.time()
@@ -82,33 +153,35 @@ def compute_permutation_custom(ml_model, X, y, scoring='roc_auc'):
     # Initialize a list of results
     results = []
     # Iterate through each predictor
-    for predictor in X:  # predictor = X.columns[0]
-        # print(predictor)
+    for predictor in X: # predictor = X.columns[0]
 
-        # Create a copy of X_test
-        X_temp = X.copy()
+        sum_new_perf = 0
 
-        # Scramble the values of the given predictor
-        X_temp[predictor] = X[predictor].sample(frac=1).values
+        for r in range(1, repeat + 1):
+            # Create a copy of X_test
+            X_temp = X.copy()
 
-        # Calculate the new RMSE
-        # new_perf = mean_squared_error(model.predict(X_temp.values), y, squared=False)
-        # new_perf = balanced_accuracy_score(model.predict(X_temp.values),  y.iloc[:, 0])
-        # TODO: check warning y_pred contains classes not in y_true
+            # Scramble the values of the given predictor
+            X_temp[predictor] = X[predictor].sample(frac=1).values
 
-        if scoring == 'roc_auc':
-            pred_temp = wrapper_predict(ml_model, X_temp)
-            new_perf = roc_auc_score(y, pred_temp)
-        elif scoring == 'neg_mean_squared_error':
-            pred_temp = wrapper_predict(ml_model, X_temp)
-            new_perf = -1 * mean_squared_error(y, pred_temp, squared=False)  # RMSE
-        elif scoring == 'balanced_accuracy':
-            pred_temp = wrapper_predict(ml_model, X_temp, prob=False)
-            new_perf = balanced_accuracy_score(y, pred_temp)
+            # Calculate the new performance
+            if scoring == 'roc_auc':
+                pred_temp = wrapper_predict(ml_model, X_temp)
+                new_perf = roc_auc_score(y, pred_temp)
+            elif scoring == 'neg_mean_squared_error':
+                pred_temp = wrapper_predict(ml_model, X_temp)
+                new_perf = -1 * mean_squared_error(y, pred_temp, squared=False)  # RMSE
+            elif scoring == 'balanced_accuracy':
+                pred_temp = wrapper_predict(ml_model, X_temp, prob=False)
+                new_perf = balanced_accuracy_score(y, pred_temp)
+
+            sum_new_perf = sum_new_perf + new_perf
+
+        new_perf_avg = sum_new_perf / repeat
 
         # Append the decrease in perf to the list of results
         results.append({'pred': predictor,
-                        'score': perf_full_mod - new_perf})
+                        'score': perf_full_mod - new_perf_avg})
 
     # Convert to a pandas dataframe and rank the predictors by score
     resultsdf = pd.DataFrame(results)
@@ -165,22 +238,13 @@ def compute_kernelshap(model, X, samples=1000):
 
     start_time = time.time()
 
-    # Convert list to array
-    # y = np.array(y)
-
-    # explain the model's predictions using SHAP
-    # (same syntax works for LightGBM, CatBoost, scikit-learn, transformers, Spark, etc.)
-
     # X_summary = shap.kmeans(X, 50)
     X_summary = shap.sample(X, samples)
-    # explainer = shap.KernelExplainer(model.predict, X_summary)
 
     wrapper_predict_model = partial(wrapper_predict, model)  # model is used as first argument -> ml_model
     explainer = shap.KernelExplainer(wrapper_predict_model, X_summary)
 
-    # kernelshap_values = explainer.shap_values(X_summary)[1]
-    # kernelshap_values = explainer.shap_values(X_summary, l1_reg='num_features(10)')[1]
-    kernelshap_values = explainer.shap_values(X_summary, nsamples=10 * X.shape[1] + 2048, l1_reg='num_features(10)')
+    kernelshap_values = explainer.shap_values(X_summary, l1_reg='num_features(10)')
 
     if model.name == "nn": # this model outputs a list (of 1 array)
         kernelshap_values = kernelshap_values[0]
@@ -192,10 +256,10 @@ def compute_kernelshap(model, X, samples=1000):
     elapsed_time = end_time-start_time
     # print("Time kernelshap FI: ", elapsed_time)
 
-    return kernelshap_values, elapsed_time
+    return kernelshap_values.mean(axis=0), elapsed_time
 
 
-def compute_sage(model, X, y, samples=1000, removal='marginal', binary_outcome=True):
+def compute_sage(model, X, y, removal='marginal', samples=1000, binary_outcome=True):
     print("Busy with sage FI")
 
     start_time = time.time()
@@ -277,9 +341,9 @@ def compute_sage(model, X, y, samples=1000, removal='marginal', binary_outcome=T
         # TODO: test difference kernel and permutation estimator?
 
     # Calculate SAGE values
-    number = X.shape[1]*1000
-    sage_values = estimator(X, y, verbose=True, bar=True, detect_convergence=False, n_permutations=number)
-    # sage_values = estimator(X, y, verbose=True, bar=True, detect_convergence=True)
+    # number = X.shape[1]*1000
+    # sage_values = estimator(X, y, verbose=True, bar=True, detect_convergence=False, n_permutations=number)
+    sage_values = estimator(X, y, detect_convergence=True)
     # sage_values.plot(feature_names)
 
     end_time = time.time()
@@ -289,4 +353,60 @@ def compute_sage(model, X, y, samples=1000, removal='marginal', binary_outcome=T
     # feature_names = X_train.columns.tolist()[:-1]
     # sage_values.plot(feature_names, title='Feature Importance (Surrogate)')
 
-    return sage_values, elapsed_time
+    return sage_values.values, elapsed_time
+
+
+def compute_loco_custom(ml_model, X, y, scoring='roc_auc'):
+    print("Busy with LOCO custom FI")
+
+    start_time = time.time()
+
+    if scoring == 'roc_auc':
+        pred = wrapper_predict(ml_model, X)
+        perf_full_mod = roc_auc_score(y, pred)
+    elif scoring == 'neg_mean_squared_error':
+        pred = wrapper_predict(ml_model, X)
+        perf_full_mod = -1 * mean_squared_error(y, pred, squared=False)  # RMSE
+    elif scoring == 'balanced_accuracy':
+        pred = wrapper_predict(ml_model, X, prob=False)
+        perf_full_mod = balanced_accuracy_score(y, pred)
+
+    # Initialize a list of results
+    results = []
+    # Iterate through each predictor
+    for predictor in X:  # predictor = X.columns[0]
+
+        # Create a copy of X_test
+        X_temp = X.copy()
+
+        # Remove the given predictor
+        X_temp.drop(predictor, axis=1, inplace=True)
+
+        # Retrain model
+        ml_model_temp, coef_model_temp = get_model(X_temp, y, ml_model.name)
+
+        # Calculate the new performance
+        if scoring == 'roc_auc':
+            pred_temp = wrapper_predict(ml_model_temp, X_temp)
+            new_perf = roc_auc_score(y, pred_temp)
+        elif scoring == 'neg_mean_squared_error':
+            pred_temp = wrapper_predict(ml_model_temp, X_temp)
+            new_perf = -1 * mean_squared_error(y, pred_temp, squared=False)  # RMSE
+        elif scoring == 'balanced_accuracy':
+            pred_temp = wrapper_predict(ml_model_temp, X_temp, prob=False)
+            new_perf = balanced_accuracy_score(y, pred_temp)
+
+        # Append the decrease in perf to the list of results
+        results.append({'pred': predictor,
+                        'score': perf_full_mod - new_perf})
+
+    # Convert to a pandas dataframe and rank the predictors by score
+    resultsdf = pd.DataFrame(results)
+
+    loco_values = resultsdf.score
+
+    end_time = time.time()
+    elapsed_time = end_time-start_time
+    # print("Time LOCO FI: ", elapsed_time)
+
+    return loco_values, elapsed_time
