@@ -1,4 +1,4 @@
-
+# Modules
 import shap
 import sage
 import numpy as np
@@ -12,9 +12,10 @@ from sklearn.model_selection import train_test_split
 
 import torch
 import torch.nn as nn
+
+# Get functions in other Python scripts
 from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
 from functools import partial
-
 from help_functions import *
 from models import *
 
@@ -24,8 +25,6 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 # TODO: set (changing) seed in shap methods?
 
 ### WRAPPER FUNCTIONS
-# TODO: check stability results/ different values per run?
-
 def permutation_auc(model, X, y, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_permutation_custom, model, X, y, 'roc_auc') # model, X, y, score used as arguments
@@ -54,7 +53,7 @@ def permutation_ba(model, X, y, convergence=False):
     return fi_values, elapsed_time
 
 
-def kernelshap(model, X, y, convergence=True):
+def kernelshap(model, X, y, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_kernelshap, model, X)  # model, X used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 100, 100)
@@ -92,6 +91,7 @@ def loco_mse(model, X, y):
 
 def loco_ba(model, X, y):
     return compute_loco_custom(model, X, y, scoring='balanced_accuracy')
+
 
 def check_convergence(wrapper_fi, start, step, stop=0.025):
     # Start values

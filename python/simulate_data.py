@@ -1,5 +1,8 @@
+# Modules
 import pandas as pd
 import numpy as np
+
+# Get functions in other Python scripts
 
 # TODO: think about reusing parts of the simulated data to resolve differences? or replicate, but how many times?
 

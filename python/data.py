@@ -1,5 +1,4 @@
 
-
 # Modules
 import importlib
 import joblib
@@ -22,14 +21,14 @@ import torch.nn as nn
 from pathlib import Path
 from datetime import date
 
+# Get functions in other Python scripts
+
+
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 # Get functions in other Python scripts
-from help_functions import *
 from simulate_data import *
-from feature_importance import *
 from models import *
-
 
 def get_data(data, repeat, root_folder, output_folder, rerun):
     data_folder = output_folder / "data"
@@ -145,12 +144,8 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test):
                 selected_vars = cor_matrix.index[(cor_matrix>params['value']).any()]
                 X = X.loc[:, selected_vars]
 
-            # Get which features where removed
-            # print(removed_vars)
-
             # Remove from X data
             X_train = X_train.drop(removed_vars, axis=1)
-            # print(X_train.corr())
             X_test = X_test.drop(removed_vars, axis=1)
 
     # Save modified data

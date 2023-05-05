@@ -1,11 +1,16 @@
+# Modules
+import matplotlib.pyplot as plt
+from scipy.stats import kendalltau
+from matplotlib.backends.backend_pdf import PdfPages
+
+
+# Get functions in other Python scripts
 from help_data import *
 from models import *
 from feature_importance import *
 from help_functions import *
 
-import matplotlib.pyplot as plt
-from scipy.stats import kendalltau
-from matplotlib.backends.backend_pdf import PdfPages
+
 
 X, y, coef_dgp, binary_outcome = load_data()
 

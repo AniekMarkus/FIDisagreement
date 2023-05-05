@@ -1,3 +1,5 @@
+
+# Modules
 import numpy as np
 from scipy.stats import pearsonr, rankdata
 import itertools
@@ -7,6 +9,7 @@ import sklearn
 import matplotlib.pyplot as plt
 from scipy.stats import kendalltau
 
+# Get functions in other Python scripts
 from help_functions import *
 
 # code based on evaluation metrics OpenXAI: https://github.com/AI4LIFE-GROUP/OpenXAI
