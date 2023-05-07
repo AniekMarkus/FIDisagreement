@@ -31,8 +31,8 @@ def get_data(data, repeat, root_folder, output_folder, rerun):
         X_train, X_test, y_train, y_test = split_data(X, y)
 
         # Data normalization (minmax)
-        X_train = pd.DataFrame(preprocessing.minmax_scale(X_train))
-        X_test = pd.DataFrame(preprocessing.minmax_scale(X_test))
+        X_train = pd.DataFrame(preprocessing.minmax_scale(X_train), columns=X_train.columns)
+        X_test = pd.DataFrame(preprocessing.minmax_scale(X_test), columns=X_test.columns)
 
         # Save data
         X_train.to_csv(data_folder / str(f"{data}-{repeat}-Xtrain.csv"), index=False)
