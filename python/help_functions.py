@@ -41,7 +41,7 @@ def normalise(array):
         return array
 
 
-def wrapper_predict(ml_model, X, prob=True):
+def wrapper_predict(ml_model, X, prob=True, threshold=0.5):
     if ml_model.name == 'nn':
         with torch.no_grad():
             if not isinstance(X, np.ndarray):
@@ -71,13 +71,32 @@ def wrapper_predict(ml_model, X, prob=True):
     if prob:
         return pred_prob
     else:
-        return np.where(pred_prob < 0.5, 0, 1)
+        return np.where(pred_prob < threshold, 0, 1)
 
+
+def get_threshold(data):
+    if "iris" in data:
+        threshold = 0.333
+    elif "vote" in data:
+        threshold = 0.386
+    elif "compas" in data:
+        threshold = 0.455
+    elif "german" in data:
+        threshold = 0.296
+    elif "plp_copd" in data:
+        threshold = 0.094
+    elif "plp_t2dm" in data:
+        threshold = 0.087
+    else:
+        print("Threshold for dataset not specified.")
+        threshold = 0.5
+    return threshold
 
 
 def test_model(output_folder, ml_model, coef_model, X_test, y_test, model, data):
     pred_prob = wrapper_predict(ml_model, X_test, prob=True)
-    pred_class = np.where(pred_prob < 0.5, 0, 1)
+    threshold = get_threshold(data)
+    pred_class = np.where(pred_prob < threshold, 0, 1)
 
     pred_outcomes = pred_class.sum()
 

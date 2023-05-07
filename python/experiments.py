@@ -121,7 +121,7 @@ if __name__ =='__main__':
                 performance = test_model(output_folder, ml_model, coef_model, X_test_p, y_test_p, args.model, data)
 
                 # Compute FI
-                fi_values, fi_time = locals()[f"{args.fi_method}"](ml_model, X_train_p, y_train_p)
+                fi_values, fi_time = locals()[f"{args.fi_method}"](ml_model, X_train_p, y_train_p, data)
                 print("> fi_method done")
                 fi_values = pd.DataFrame(np.array(fi_values), index=X_train_p.columns.values, columns=['value'])
                 fi_values.to_csv(output_folder / "feature_importance" / str(f"{data}-{args.model}-{args.fi_method}-fi_values.csv"))

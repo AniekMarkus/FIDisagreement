@@ -21,7 +21,7 @@ from sage_utils import Surrogate, MaskLayer1d, KLDivLoss
 # TODO: set (changing) seed in shap methods?
 
 ### WRAPPER FUNCTIONS
-def permutation_auc(model, X, y, convergence=False):
+def permutation_auc(model, X, y, data, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_permutation_custom, model, X, y, 'roc_auc') # model, X, y, score used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 1, 1)
@@ -30,7 +30,7 @@ def permutation_auc(model, X, y, convergence=False):
 
     return fi_values, elapsed_time
 
-def permutation_mse(model, X, y, convergence=False):
+def permutation_mse(model, X, y, data, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_permutation_custom, model, X, y, 'neg_mean_squared_error') # model, X, y, score used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 1, 1)
@@ -39,17 +39,18 @@ def permutation_mse(model, X, y, convergence=False):
 
     return fi_values, elapsed_time
 
-def permutation_ba(model, X, y, convergence=False):
+def permutation_ba(model, X, y, data, convergence=False):
+    threshold = get_threshold(data)
     if convergence:
-        wrapper_fi = partial(compute_permutation_custom, model, X, y, 'balanced_accuracy')  # model, X, y, score used as arguments
+        wrapper_fi = partial(compute_permutation_custom, model, X, y, 'balanced_accuracy', threshold)  # model, X, y, score used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 1, 1)
     else:
-        fi_values, elapsed_time = compute_permutation_custom(model, X, y, scoring='balanced_accuracy', repeat=10)
+        fi_values, elapsed_time = compute_permutation_custom(model, X, y, scoring='balanced_accuracy', threshold=threshold, repeat=10)
 
     return fi_values, elapsed_time
 
 
-def kernelshap(model, X, y, convergence=False):
+def kernelshap(model, X, y, data, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_kernelshap, model, X)  # model, X used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
@@ -59,7 +60,7 @@ def kernelshap(model, X, y, convergence=False):
     return fi_values, elapsed_time
 
 
-def sage_marginal(model, X, y, convergence=False):
+def sage_marginal(model, X, y, data, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_sage, model, X, y, 'marginal')  # model, X, y used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
@@ -69,7 +70,7 @@ def sage_marginal(model, X, y, convergence=False):
     return fi_values, elapsed_time
 
 
-def sage_conditional(model, X, y, convergence=False): # TODO: check implementations
+def sage_conditional(model, X, y, data, convergence=False): # TODO: check implementations
     if convergence:
         wrapper_fi = partial(compute_sage, model, X, y, 'surrogate')  # model, X, y used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
@@ -79,14 +80,16 @@ def sage_conditional(model, X, y, convergence=False): # TODO: check implementati
     return fi_values, elapsed_time
 
 
-def loco_auc(model, X, y):
+def loco_auc(model, X, y, data):
     return compute_loco_custom(model, X, y, scoring='roc_auc')
 
-def loco_mse(model, X, y):
+def loco_mse(model, X, y, data):
     return compute_loco_custom(model, X, y, scoring='neg_mean_squared_error')
 
-def loco_ba(model, X, y):
-    return compute_loco_custom(model, X, y, scoring='balanced_accuracy')
+def loco_ba(model, X, y, data):
+    threshold = get_threshold(data)
+    return compute_loco_custom(model, X, y, scoring='balanced_accuracy', threshold=threshold)
+
 
 
 def check_convergence(wrapper_fi, start, step, stop=0.025):
@@ -130,7 +133,7 @@ def compute_permutation(model, X, y, scoring='roc_auc'):
     return permutation_values, elapsed_time
 
 
-def compute_permutation_custom(ml_model, X, y, scoring='roc_auc', repeat=1):
+def compute_permutation_custom(ml_model, X, y, scoring='roc_auc', threshold=0.5, repeat=1):
     print("Busy with permutation custom FI")
 
     start_time = time.time()
@@ -143,7 +146,7 @@ def compute_permutation_custom(ml_model, X, y, scoring='roc_auc', repeat=1):
         pred = wrapper_predict(ml_model, X)
         perf_full_mod = -1 * mean_squared_error(y, pred, squared=False)  # RMSE
     elif scoring == 'balanced_accuracy':
-        pred = wrapper_predict(ml_model, X, prob=False)
+        pred = wrapper_predict(ml_model, X, prob=False, threshold=threshold)
         perf_full_mod = balanced_accuracy_score(y, pred)
 
     # Initialize a list of results
@@ -359,7 +362,7 @@ def compute_sage(model, X, y, removal='marginal', samples=1000, binary_outcome=T
     return sage_values.values, elapsed_time
 
 
-def compute_loco_custom(ml_model, X, y, scoring='roc_auc'):
+def compute_loco_custom(ml_model, X, y, scoring='roc_auc', threshold=0.5):
     print("Busy with LOCO custom FI")
 
     start_time = time.time()
@@ -371,7 +374,7 @@ def compute_loco_custom(ml_model, X, y, scoring='roc_auc'):
         pred = wrapper_predict(ml_model, X)
         perf_full_mod = -1 * mean_squared_error(y, pred, squared=False)  # RMSE
     elif scoring == 'balanced_accuracy':
-        pred = wrapper_predict(ml_model, X, prob=False)
+        pred = wrapper_predict(ml_model, X, prob=False, threshold=threshold)
         perf_full_mod = balanced_accuracy_score(y, pred)
 
     # Initialize a list of results
