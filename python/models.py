@@ -9,6 +9,7 @@ import random
 import xgboost
 import torch
 import torch.nn as nn
+import sklearn.linear_model
 
 # Get functions in other Python scripts
 from help_functions import *
