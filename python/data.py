@@ -6,6 +6,7 @@ import os
 
 import random
 from scipy.io import arff
+from sklearn import preprocessing
 
 # Get functions in other Python scripts
 
@@ -28,6 +29,10 @@ def get_data(data, repeat, root_folder, output_folder, rerun):
 
         # Split data
         X_train, X_test, y_train, y_test = split_data(X, y)
+
+        # Data normalization (minmax)
+        X_train = pd.DataFrame(preprocessing.minmax_scale(X_train))
+        X_test = pd.DataFrame(preprocessing.minmax_scale(X_test))
 
         # Save data
         X_train.to_csv(data_folder / str(f"{data}-{repeat}-Xtrain.csv"), index=False)
