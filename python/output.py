@@ -84,7 +84,6 @@ if __name__ =='__main__':
 
     # SETTINGS
     root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
-    output_folder = Path(root_folder + "/results/output_" + str(date.today()))
 
     # PARAMETERS
     parser = argparse.ArgumentParser(
@@ -94,8 +93,15 @@ if __name__ =='__main__':
 
     parser.add_argument('data')
     parser.add_argument('model')
+    parser.add_argument('folder', default=None)
     args = parser.parse_args()
     print(f'Parameters : data = {args.data}, model = {args.model}')
+
+    # If no folder given, use output_folder
+    if args.folder is None:
+        output_folder = Path(root_folder + "/results/output_" + str(date.today()))
+    else:
+        output_folder = Path(root_folder + "/results/" + str(args.folder))
 
     # CREATE FOLDERS
     result_folder = output_folder / "result"

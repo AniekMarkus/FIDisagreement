@@ -31,7 +31,6 @@ if __name__ =='__main__':
 
     # SETTINGS
     root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
-    output_folder = Path(root_folder + "/results/output_" + str(date.today()))
 
     # TODO: different hyperparameter settings?
     # hyperparams={
@@ -55,6 +54,7 @@ if __name__ =='__main__':
     parser.add_argument('fi_method')
     # parser.add_argument('metric', default='all')
     parser.add_argument('repeats', type=int, default=1)
+    parser.add_argument('folder', default=None)
     parser.add_argument('--modify-data', dest="modify_data", action='store_true')
     parser.set_defaults(modify_data=False)
     parser.add_argument('--use-model', dest='run_model', action='store_false') # If use existing model: don't run model
@@ -66,6 +66,12 @@ if __name__ =='__main__':
     # parser.add_argument('save_path', default='./Results/')
 
     args = parser.parse_args()
+
+    # If no folder given, use output_folder
+    if args.folder is None:
+        output_folder = Path(root_folder + "/results/output_" + str(date.today()))
+    else:
+        output_folder = Path(root_folder + "/results/" + str(args.folder))
 
     # If use existing model: don't run data
     if not args.run_model:
