@@ -52,9 +52,9 @@ def permutation_ba(model, X, y, convergence=False):
 def kernelshap(model, X, y, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_kernelshap, model, X)  # model, X used as arguments
-        fi_values, elapsed_time = check_convergence(wrapper_fi, 100, 100)
+        fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
     else:
-        fi_values, elapsed_time = compute_kernelshap(model, X, samples=100) # TODO: change default, e.g. 3000?
+        fi_values, elapsed_time = compute_kernelshap(model, X, samples=3000) # TODO: change default
 
     return fi_values, elapsed_time
 
@@ -64,7 +64,7 @@ def sage_marginal(model, X, y, convergence=False):
         wrapper_fi = partial(compute_sage, model, X, y, 'marginal')  # model, X, y used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
     else:
-        fi_values, elapsed_time = compute_sage(model, X, y, removal='marginal', samples=100) # TODO: change default
+        fi_values, elapsed_time = compute_sage(model, X, y, removal='marginal', samples=3000) # TODO: change default
 
     return fi_values, elapsed_time
 
@@ -74,7 +74,7 @@ def sage_conditional(model, X, y, convergence=False): # TODO: check implementati
         wrapper_fi = partial(compute_sage, model, X, y, 'surrogate')  # model, X, y used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
     else:
-        fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', samples=100) # TODO: change default
+        fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', samples=3000) # TODO: change default
 
     return fi_values, elapsed_time
 
@@ -102,7 +102,7 @@ def check_convergence(wrapper_fi, start, step, stop=0.025):
 
         # Check if L2 distance smaller than stop
         if dist < stop:
-            print("Converged at " + str(value))
+            print("Converged at " + str(value) + " with distance " + str(dist))
             converged=True
         else:
             print("Distance at " + str(value) + " is " + str(dist))
@@ -291,9 +291,16 @@ def compute_sage(model, X, y, removal='marginal', samples=1000, binary_outcome=T
 
         surrogate = Surrogate(surr, num_features)
 
-        surrogate.train(
-            train_data=(X_surr, y_surr),
-            val_data=(X_val, y_val),
+        X_surr = torch.tensor(X_surr, dtype=torch.float32)
+        X_val = torch.tensor(X_val, dtype=torch.float32)
+
+        data_surr = torch.utils.data.TensorDataset(X_surr)
+        data_val = torch.utils.data.TensorDataset(X_val)
+
+        surrogate.train_original_model(
+            train_data=data_surr,
+            val_data=data_val,
+            original_model=model,
             batch_size=64,
             max_epochs=100,
             loss_fn=KLDivLoss(),

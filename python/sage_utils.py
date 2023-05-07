@@ -1,18 +1,24 @@
+# Modules
+import numpy as np
+import pandas as pd
+import os
 
 import torch
 import torch.nn as nn
-import numpy as np
-import itertools
-from torch.utils.data import Dataset
-from torch.distributions.categorical import Categorical
-
-import torch
 import torch.optim as optim
-import numpy as np
+import itertools
+from torch.distributions.categorical import Categorical
 from torch.utils.data import Dataset, TensorDataset, DataLoader
 from torch.utils.data import RandomSampler, BatchSampler
 from copy import deepcopy
 from tqdm.auto import tqdm
+
+from functools import partial
+
+# Get functions in other Python scripts
+from help_functions import wrapper_predict
+
+# code based on ...
 
 class MaskLayer1d(nn.Module):
     '''
@@ -82,7 +88,7 @@ class KLDivLoss(nn.Module):
           pred:
           target:
         '''
-        return self.kld(pred.log_softmax(dim=1), target)
+        return self.kld(pred.log_softmax(dim=1)[:, 1], target)
 
 
 class DatasetRepeat(Dataset):
@@ -237,6 +243,8 @@ def generate_labels(dataset, model, batch_size):
       model: predictive model.
       batch_size: minibatch size.
     '''
+    wrapper_predict_model = partial(wrapper_predict, model)  # model is used as first argument -> ml_model
+
     with torch.no_grad():
         # Setup.
         preds = []
@@ -247,8 +255,8 @@ def generate_labels(dataset, model, batch_size):
         loader = DataLoader(dataset, batch_size=batch_size)
 
         for (x,) in loader:
-            pred = model(x.to(device)).cpu()
-            preds.append(pred)
+            pred = wrapper_predict_model(x.numpy())
+            preds.append(torch.tensor(pred, dtype=torch.float32))
 
     return torch.cat(preds)
 
@@ -359,6 +367,7 @@ class Surrogate:
                 x_val = torch.tensor(x_val, dtype=torch.float32)
                 y_val = torch.tensor(y_val, dtype=torch.float32)
             x_val_repeat = x_val.repeat(validation_samples, 1)
+            # y_val = torch.unflatten(y_val, -1, [-1, 1]) # AM: added this line to fix "Size mismatch between tensors"
             y_val_repeat = y_val.repeat(validation_samples, 1)
             val_set = TensorDataset(
                 x_val_repeat, y_val_repeat, S_val)
@@ -483,6 +492,9 @@ class Surrogate:
           validation_seed: random seed for generating validation data.
           verbose: verbosity.
         '''
+
+        wrapper_predict_model = partial(wrapper_predict, original_model)  # model is used as first argument -> ml_model
+
         # Set up train dataset.
         if isinstance(train_data, np.ndarray):
             train_data = torch.tensor(train_data, dtype=torch.float32)
@@ -567,7 +579,8 @@ class Surrogate:
 
                 # Get original model prediction.
                 with torch.no_grad():
-                    y = original_model(x)
+                    y = wrapper_predict_model(x.numpy())
+                    y = torch.tensor(y, dtype=torch.float32)
 
                 # Generate subsets.
                 S = sampler.sample(batch_size).to(device=device)
