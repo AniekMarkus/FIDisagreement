@@ -16,7 +16,7 @@ from help_functions import *
 
 # code based on evaluation metrics OpenXAI: https://github.com/AI4LIFE-GROUP/OpenXAI
 
-def fi_evaluate(fi1, fi2, metrics):
+def fi_evaluate(fi1, fi2, eval_metrics):
     """
 
      :param fi1: np.array, n x p
@@ -28,8 +28,8 @@ def fi_evaluate(fi1, fi2, metrics):
     attrA = np.array(fi1).reshape(1, -1)
     attrB = np.array(fi2).reshape(1, -1)
 
-    eval_metrics = []
-    for metric in metrics:
+    res_metrics = []
+    for metric in eval_metrics:
         if metric in ('overlap', 'rank', 'sign', 'ranksign'):
             metric_distr = agreement_fraction(attrA, attrB, metric, k=5) # k=10
         elif metric in ('pearson', 'kendalltau'):
@@ -39,9 +39,9 @@ def fi_evaluate(fi1, fi2, metrics):
         elif metric in ('mae', 'rmse', 'r2'):
             metric_distr = error_calculation(attrA, attrB, metric)
 
-        eval_metrics.append(np.mean(metric_distr))
+        res_metrics.append(np.mean(metric_distr))
 
-    return eval_metrics
+    return res_metrics
 
 def agreement_fraction(attrA, attrB, metric, k=3):
     # id of top-k features

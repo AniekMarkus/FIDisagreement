@@ -41,7 +41,7 @@ def aggregate(data, model, output_folder):
     return feature_importance
 
 def evaluate_disagreement(data, feature_importance, output_folder):
-    metrics = ['overlap', 'rank', 'sign', 'ranksign', 'pearson', 'kendalltau', 'pairwise_comp', 'mae', 'rmse', 'r2']
+    eval_metrics = ['overlap', 'rank', 'sign', 'ranksign', 'pearson', 'kendalltau', 'pairwise_comp', 'mae', 'rmse', 'r2']
     # feature_importance = pd.read_csv(f'{output_folder}/result/{data}-aggregate.csv', index_col=0)
 
     results = pd.DataFrame(columns=['data', 'model', 'fi_method1', 'fi_method2'])
@@ -59,16 +59,16 @@ def evaluate_disagreement(data, feature_importance, output_folder):
             fi_meth1 = feature_importance.iloc[i]
             fi_meth2 = feature_importance.iloc[j]
 
-            eval_metrics = fi_evaluate(fi1=fi_meth1.drop(cols),
+            res_metrics = fi_evaluate(fi1=fi_meth1.drop(cols),
                                        fi2=fi_meth2.drop(cols),
-                                       metrics=metrics)
+                                       metrics=eval_metrics)
 
             info = pd.Series({'data': fi_meth1['data'],
                               'model': fi_meth1['model'],
                               'fi_method1': fi_meth1['fi_method'],
                               'fi_method2': fi_meth2['fi_method']}, dtype='object')
 
-            results = results.append(info.append(pd.Series(eval_metrics, index=metrics)), ignore_index=True)
+            results = results.append(info.append(pd.Series(res_metrics, index=eval_metrics)), ignore_index=True)
 
     # Add names to columns
     results.to_csv(f'{output_folder}/result/{data}-eval_metrics.csv', index=False)
@@ -107,6 +107,7 @@ if __name__ =='__main__':
     result_folder = output_folder / "result"
     if not result_folder.exists():
         os.mkdir(result_folder)
+        os.mkdir(output_folder / "plots")
 
     # EVALUATE
     # aggregate results
@@ -115,7 +116,7 @@ if __name__ =='__main__':
     # compute disagreement for each version of data and model
     for v in feature_importance.version.unique():
         feature_importance_p = feature_importance.loc[feature_importance.version == v, :]
-        eval_metrics_p = evaluate_disagreement(str(f"{args.data}-{v}-{args.model}"), feature_importance_p, output_folder)
+        res_metrics_p = evaluate_disagreement(str(f"{args.data}-{v}-{args.model}"), feature_importance_p, output_folder)
 
     # compute axioms
     # eval_metrics = evaluate_axioms(args.data, feature_importance, output_folder)

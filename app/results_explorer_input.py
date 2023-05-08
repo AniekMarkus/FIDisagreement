@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import date
 import os
 import re
+import plotly.graph_objs as go
 
 root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
 output_folder = Path(root_folder + "/results/output_" + str(date.today()))
@@ -15,14 +16,16 @@ versions = list(set(map(lambda v: v.split(sep="-")[2], files)))
 models = list(set(map(lambda v: v.split(sep="-")[3], files)))
 fimethods = list(set(map(lambda v: v.split(sep="-")[4], files)))
 
-metrics = ['overlap', 'rank', 'sign', 'ranksign',
+eval_metrics = ['overlap', 'rank', 'sign', 'ranksign',
            'pearson', 'kendalltau', 'pairwise_comp', 'mae', 'rmse', 'r2']
 
-color_dict = {'coefficient': '#ecda9a',
+color_dict = {'coefficient': '#ecda9a', # TODO: change colors
               'permutation_auc': '#f3ad6a',
               'permutation_mse': '#f66356',
-              'permutation_accuracy': '#f7945d',
               'permutation_ba': '#f97b57',
+              'loco_auc': '#f3ad6a',
+              'loco_mse': '#f66356',
+              'loco_ba': '#f97b57',
               'kernelshap': '#96d2a4',
               #'kernelshap_1000': '#4da284',
               'sage_marginal': '#68abb8',
@@ -37,3 +40,13 @@ if os.path.exists(fileName):
     modify_params.version= ['v' + str(row) for row in modify_params.version]
 else:
     modify_params = {'version': 'v0'}
+
+std_layout = go.Layout(
+    xaxis=dict(gridcolor="#2f3445"),
+    yaxis=dict(gridcolor="#2f3445"),
+    # legend=dict(x=0, y=1.05, orientation="v"),
+    margin=dict(l=100, r=10, t=50, b=40),
+    plot_bgcolor="#282b38",
+    paper_bgcolor="#282b38",
+    font={"color": "#a5b1cd"},
+)

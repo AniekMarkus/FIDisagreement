@@ -8,7 +8,7 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 
-from app.results_explorer_input import output_folder, datasets, models, fimethods, metrics, color_dict, modify_params
+from app.results_explorer_input import output_folder, datasets, models, fimethods, eval_metrics, color_dict, modify_params
 import app.results_explorer_utils as drc
 import app.results_explorer_figures as figs
 
@@ -50,7 +50,7 @@ layout = html.Div(id="app-container",  # id="app-container",
                                       drc.NamedDropdown(
                                           name="Select Metric (y-axis)",
                                           id="dropdown-select-metric",
-                                          options=metrics,
+                                          options=eval_metrics,
                                           clearable=False,
                                           searchable=False,
                                           value="mae",

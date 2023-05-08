@@ -45,19 +45,8 @@ def fi_values(output_folder,
     # Link to colors
     plot_data['colors'] = plot_data['fi_method'].map(color_dict)
 
-    layout = go.Layout(
-        title="Visualization of feature importance",
-        xaxis=dict(title="Variables", gridcolor="#2f3445"),
-        yaxis=dict(title="Importance (normalized)", gridcolor="#2f3445"),
-        legend=dict(x=0, y=1.05, orientation="v"),
-        margin=dict(l=100, r=10, t=50, b=40),
-        plot_bgcolor="#282b38",
-        paper_bgcolor="#282b38",
-        font={"color": "#a5b1cd"},
-    )
-
-    figure = go.Figure(layout=layout)
-    for m in fimethod: # m = "permutation_auc"
+    figure = go.Figure(layout=std_layout)
+    for m in fimethod:  # m = "permutation_auc"
         values = plot_data.loc[plot_data.fi_method == m, :]
         # values = values.iloc[order_variable, :]
         values = values.reset_index(drop=True)
@@ -70,19 +59,26 @@ def fi_values(output_folder,
                     y=values['mean'],
                     mode='lines',
                     line=dict(color=values.loc[0, 'colors'])
-                ),
-                go.Scatter(
-                    x=list(values['variable'])+list(values['variable'][::-1]),  # x, then x reversed
-                    y=list(values['ci_upper'])+list(values['ci_lower'][::-1]),  # upper, then lower reversed
-                    fill='toself',
-                    fillcolor=values.loc[0, 'colors'],
-                    line=dict(color=values.loc[0, 'colors']),
-                    opacity=0.3,
-                    hoverinfo='skip',
-                    showlegend=True,
-                    name='95% CI' # m
                 )
+                # , go.Scatter(
+                #     x=list(values['variable'])+list(values['variable'][::-1]),  # x, then x reversed
+                #     y=list(values['ci_upper'])+list(values['ci_lower'][::-1]),  # upper, then lower reversed
+                #     fill='toself',
+                #     fillcolor=values.loc[0, 'colors'],
+                #     line=dict(color=values.loc[0, 'colors']),
+                #     opacity=0.3,
+                #     hoverinfo='skip',
+                #     showlegend=True,
+                #     name='95% CI' # m
+                # )
         ])
+
+    figure.update_layout(
+        title="Feature importance (line = FI method)",
+        xaxis=dict(title="Variables"),
+        yaxis=dict(title="Importance (scaled)"))
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_values.svg')
 
     return figure
 
@@ -102,20 +98,8 @@ def fi_ranking(output_folder,
     # Take mean across iterations
     plot_data = fi_rank.groupby(by=['variable', 'fi_method'], group_keys=True, as_index=False).mean()
 
-    layout = go.Layout(
-        title="Slope chart ranking (each line = variable)",
-        xaxis=dict(title="FI methods", gridcolor="#2f3445"),
-        yaxis=dict(title="Ranking", gridcolor="#2f3445"),
-        legend=None,
-        margin=dict(l=100, r=10, t=50, b=40),
-        # colorscale=plotly.graph_objs.layout.Colorscale(diverging='blues')
-        plot_bgcolor="#282b38",
-        paper_bgcolor="#282b38",
-        font={"color": "#a5b1cd"},
-    )
-
-    figure = go.Figure(layout=layout)
-    for v in plot_data.variable:  # v = plot_data.variable[0]
+    figure = go.Figure(layout=std_layout)
+    for v in plot_data.variable:
         temp = plot_data[plot_data.variable == v]
 
         figure.add_traces([
@@ -127,7 +111,13 @@ def fi_ranking(output_folder,
                 # line=dict(color=list_color[v])
             )])
 
-    figure.update_layout(showlegend=False)
+    figure.update_layout(
+        title="Ranking (line = variable)",
+        xaxis=dict(title="FI method"),
+        yaxis=dict(title="Ranking"),
+        showlegend=False)
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_ranking.svg')
 
     return figure
 
@@ -137,7 +127,7 @@ def fi_topfeatures(output_folder,
                    version = ["v0"],
                    model = ["logistic"],
                    fimethod = ["permutation_auc"],
-                   k=10):
+                   k=5):
 
     # Get feature importance ranking
     fi_rank, fi_values, settings_data = get_rank(output_folder, dataset, version, model, fimethod, scale=True)
@@ -157,10 +147,10 @@ def fi_topfeatures(output_folder,
     fi_values = pd.pivot(fi_values, index='variable', columns='fi_method', values='value')
     fi_values.reset_index(inplace=True)
 
-    figure = make_subplots(1, len(fimethod), subplot_titles=fimethod)
+    # figure = make_subplots(1, len(fimethod), subplot_titles=fimethod)
+    figure = go.Figure(layout=std_layout).set_subplots(1, len(fimethod), horizontal_spacing=0.1, subplot_titles=fimethod)
     for i in range(1, len(fimethod)+1):
         m = fimethod[i-1]
-        # cols = ['variable', m]
 
         rank_i = fi_rank.loc[:, [m, 'variable']]
         rank_i = rank_i.sort_values(m, inplace=False, ascending=True, ignore_index=True)
@@ -173,13 +163,14 @@ def fi_topfeatures(output_folder,
         figure.add_trace(go.Bar(x=rank_i.loc[:, m], y=rank_i.variable, orientation='h', name=m, marker_color=color_dict[m]), 1, i)
         # figure.update_layout(yaxis=dict(autorange="reversed"))
 
-    # figure.update_xaxes(matches='x')
-    figure.update_layout(title="Most important features",
+    figure.update_layout(title="Top features",
                          barmode='stack',
                          showlegend=False)
     figure.update_annotations(font_size=10)
-
     figure.update_xaxes(visible=False)
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_topfeatures.svg')
+
     return figure
 
 
@@ -189,10 +180,10 @@ def fi_metrics(output_folder,
                version = "v10",
                model = "logistic",
                fimethod = ["permutation_auc", "permutation_ba"],
-               metrics = ["overlap", "mae"]):
+               eval_metrics = ["overlap", "mae"]):
 
     # Get feature importance metrics
-    eval_metrics, eval_names = get_metrics(output_folder, dataset, version, model, fimethod, metrics)
+    eval_metrics, eval_names = get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics)
 
     # For visualization purposes show small number instead of zero
     eval_metrics[eval_metrics == 0] = 0.01
@@ -203,25 +194,14 @@ def fi_metrics(output_folder,
 
     # Combine and translate wide to long format
     metrics_data = pd.concat([eval_names, eval_metrics], axis=1)
-    metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars=metrics, var_name="metrics", ignore_index=False)
-
-    layout = go.Layout(
-        title="Metrics",
-        xaxis=dict(title="Metrics", gridcolor="#2f3445"),
-        yaxis=dict(title="Agreement", gridcolor="#2f3445"),
-        legend=dict(x=0, y=1.2, orientation="v"),
-        margin=dict(l=100, r=10, t=25, b=40),
-        plot_bgcolor = "#282b38",
-        paper_bgcolor = "#282b38",
-        font={"color": "#a5b1cd"},
-    )
+    metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars=eval_metrics, var_name="metrics", ignore_index=False)
 
     # Grouped box plot
     comparison = [fimethod[0]]
     metrics_data = metrics_data.loc[metrics_data.fi_method2.isin(comparison), :]
     iterate = metrics_data.fi_method1.unique()
 
-    figure = go.Figure(layout=layout)
+    figure = go.Figure(layout=std_layout)
     for i in iterate:  # i = iterate[0]
         figure.add_trace(go.Box(
             x=metrics_data.loc[metrics_data.fi_method1 == i, "metrics"],
@@ -232,9 +212,17 @@ def fi_metrics(output_folder,
 
     figure.update_yaxes(range=[-0.1, 1.1])
 
-    figure.update_layout(boxmode="group", margin=dict(l=100, r=10, t=25, b=150))
+    figure.update_layout(title="Evaluation disagreement",
+                         xaxis=dict(title="Metrics"),
+                         yaxis=dict(title="Agreement"),
+                         boxmode="group",
+                         margin=dict(l=100, r=10, t=25, b=150),
+                         legend=dict(x=0, y=1.2, orientation="v"))
+
     figure.add_annotation(font=dict(size=10), x=0, y=-0.5, text="Note: higher values indicate more agreement.",
                           showarrow=False, textangle=0, xanchor='left', xref="paper", yref="paper")
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_metrics.svg')
 
     return figure
 
@@ -269,17 +257,7 @@ def complexity_plot(output_folder,
 
     plot_data = pd.merge(plot_data, modify_params, on='version')
 
-    layout = go.Layout(
-        title=str("Effect of modifications " + version),
-        xaxis=dict(title="Varying data complexity", gridcolor="#2f3445"),
-        yaxis=dict(title="Agreement", gridcolor="#2f3445"),
-        legend=dict(x=0, y=1.05, orientation="v"),
-        margin=dict(l=100, r=10, t=50, b=40),
-        plot_bgcolor="#282b38",
-        paper_bgcolor="#282b38",
-        font={"color": "#a5b1cd"},
-    )
-    figure = go.Figure(layout=layout)
+    figure = go.Figure(layout=std_layout)
     for fi in all_metrics.fi_method1.unique():
         values = plot_data.loc[plot_data.fi_method1 == fi, :].reset_index(drop=True)
 
@@ -291,6 +269,12 @@ def complexity_plot(output_folder,
                 mode='lines',
                 line=dict(color=color_dict[fi])
             )])
+
+    figure.update_layout(title=str("Effect of modifications " + version),
+                         xaxis=dict(title="Varying data complexity"),
+                         yaxis=dict(title="Agreement"))
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity.svg')
 
     return figure
 
@@ -454,8 +438,7 @@ def complexity_plot(output_folder,
 #     figure = go.Figure(data=data, layout=layout)
 #
 #     return figure
-#
-#
+
 
 def data_correlogram(output_folder,
                      dataset="iris"):

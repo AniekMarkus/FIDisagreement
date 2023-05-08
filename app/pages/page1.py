@@ -1,11 +1,13 @@
 import dash
+import pyodbc
 
 dash.register_page(__name__)
 
 from dash import dcc, html, dash_table,  Input, Output, callback
 from dash.dependencies import Input, Output, State
+import dash_bootstrap_components as dbc
 
-from app.results_explorer_input import output_folder, datasets, versions, models, fimethods, metrics, color_dict
+from app.results_explorer_input import output_folder, datasets, versions, models, fimethods, eval_metrics, color_dict
 import app.results_explorer_utils as drc
 import app.results_explorer_figures as figs
 
@@ -55,10 +57,10 @@ layout = html.Div(id="app-container",  # id="app-container",
                                         drc.NamedDropdown(
                                             name="Select Metrics",
                                             id="dropdown-select-metrics",
-                                            options=metrics,
+                                            options=eval_metrics,
                                             clearable=False,
                                             searchable=False,
-                                            value=metrics,
+                                            value=eval_metrics,
                                             multi=True,
                                         ),
                                     ],
@@ -95,23 +97,25 @@ def update_graph_top(
         version,
         model,
         fimethod,
-        metrics
+        eval_metrics
 ):
     fi_plot = figs.fi_values(output_folder, color_dict, dataset, version, model, fimethod)
     fi_rank = figs.fi_ranking(output_folder, color_dict, dataset, version, model, fimethod)
-    fi_top = figs.fi_topfeatures(output_folder, color_dict, dataset, version, model, fimethod, k=10)
-    fi_metrics = figs.fi_metrics(output_folder, color_dict, dataset, version, model, fimethod, metrics)
+    fi_top = figs.fi_topfeatures(output_folder, color_dict, dataset, version, model, fimethod, k=5)
+    fi_metrics = figs.fi_metrics(output_folder, color_dict, dataset, version, model, fimethod, eval_metrics)
 
     return [
-        html.Div(
+        html.Div([
+        dbc.Row([
+        dbc.Col(html.Div(
             id="graph-container1",
             children=dcc.Loading(
                 className="graph-wrapper",
                 children=dcc.Graph(id="fi_plot", figure=fi_plot),
                 style={'float': 'none'},
             ),
-        ),
-        html.Div(
+        )),
+        dbc.Col(html.Div(
             id="graph-container12",
             children=[
                 dcc.Loading(
@@ -120,7 +124,7 @@ def update_graph_top(
                     style={'float': 'none'},
                 ),
             ],
-        ),
+        ))])]),
         html.Div(
             id="graph-container13",
             children=[
