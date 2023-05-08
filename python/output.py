@@ -61,7 +61,7 @@ def evaluate_disagreement(data, feature_importance, output_folder):
 
             res_metrics = fi_evaluate(fi1=fi_meth1.drop(cols),
                                        fi2=fi_meth2.drop(cols),
-                                       metrics=eval_metrics)
+                                       eval_metrics=eval_metrics)
 
             info = pd.Series({'data': fi_meth1['data'],
                               'model': fi_meth1['model'],

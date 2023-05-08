@@ -83,9 +83,9 @@ def get_threshold(data):
         threshold = 0.455
     elif "german" in data:
         threshold = 0.296
-    elif "plp_copd" in data:
+    elif "copdmortality" in data:
         threshold = 0.094
-    elif "plp_t2dm" in data:
+    elif "heartfailurestroke" in data:
         threshold = 0.087
     else:
         print("Threshold for dataset not specified.")

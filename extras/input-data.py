@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
-datasets = ["iris", "vote", "compas", "german"]
+datasets = ["iris", "vote", "compas", "german", "copdmortality", "heartfailurestroke"]
 
 data = datasets[3]
 
@@ -16,6 +16,9 @@ input_data = pd.read_csv(root_folder + "/extras/data-openxai/" + data + ".csv")
 
 # Check size
 input_data.shape
+
+# Check rate
+input_data['class'].sum() / len(input_data['class']) * 100.0
 
 # Necessary changes
 if data == "compas":
