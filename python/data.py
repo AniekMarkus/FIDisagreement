@@ -200,18 +200,19 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, r
 
                             X_train[predictor].iloc[selected_rows_p] = 0  # remove records binary vars by imputing zeros
 
-        elif params == '':
-            # For baseline run do continue analysis
-            change=True
-
         # Save modified data
         X_train.to_csv(data_folder / str(f"{data}-Xtrain.csv"), index=False)
         pd.DataFrame(y_train).to_csv(data_folder / str(f"{data}-ytrain.csv"), index=False)
 
         X_test.to_csv(data_folder / str(f"{data}-Xtest.csv"), index=False)
         pd.DataFrame(y_test).to_csv(data_folder / str(f"{data}-ytest.csv"), index=False)
+        print("> modify_data done")
 
-    print("> modify_data done")
+    elif params == '':
+        # For baseline run do continue analysis
+        change=True
+        print("> modify_data skip")
+
     return X_train, X_test, y_train, y_test, change
 
 
