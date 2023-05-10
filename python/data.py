@@ -94,7 +94,6 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, r
         if params != '':
             # Modify data
             if params['change'] == "baseline":
-                print("Do baseline v0 run")
                 # For verson v0 do continue analysis
                 change=True
 
@@ -124,19 +123,23 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, r
 
             elif params['change'] == "num_outcomes":
                 if params['method'] == "random":
+                    # Reset index
+                    X_train.reset_index(drop=True, inplace=True)
+                    y_train.reset_index(drop=True, inplace=True)
+
                     # Randomly select subset of outcomes while keeping non-outcomes (change train set)
                     rows_zeros = y_train.index[y_train == 0]
                     rows_ones = y_train.index[y_train == 1]
-                    selected_ones = random.sample(list(rows_ones), min(params["value"], len(rows_ones)))
 
+                    selected_ones = random.sample(list(rows_ones), min(params["value"], len(rows_ones)))
                     selected_rows = list(selected_ones) + list(rows_zeros)
 
                     # Check if change occurred
                     if len(selected_rows) < X_train.shape[0]:
                         change = True
 
-                    X_train = X_train.loc[selected_rows]
-                    y_train = y_train.loc[selected_rows]
+                    X_train = X_train.iloc[selected_rows]
+                    y_train = y_train.iloc[selected_rows]
 
             elif params['change'] == "correlation":
                 # Remove features with correlation above certain threshold (change X data)
