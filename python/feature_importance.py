@@ -55,7 +55,7 @@ def kernelshap(model, X, y, data, convergence=False):
         wrapper_fi = partial(compute_kernelshap, model, X)  # model, X used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
     else:
-        fi_values, elapsed_time = compute_kernelshap(model, X, samples=3000) # TODO: change default
+        fi_values, elapsed_time = compute_kernelshap(model, X, samples=1000)
 
     return fi_values, elapsed_time
 
@@ -65,17 +65,17 @@ def sage_marginal(model, X, y, data, convergence=False):
         wrapper_fi = partial(compute_sage, model, X, y, 'marginal')  # model, X, y used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
     else:
-        fi_values, elapsed_time = compute_sage(model, X, y, removal='marginal', samples=3000) # TODO: change default
+        fi_values, elapsed_time = compute_sage(model, X, y, removal='marginal', samples=1000)
 
     return fi_values, elapsed_time
 
 
-def sage_conditional(model, X, y, data, convergence=False): # TODO: check implementations
+def sage_conditional(model, X, y, data, convergence=False):
     if convergence:
         wrapper_fi = partial(compute_sage, model, X, y, 'surrogate')  # model, X, y used as arguments
         fi_values, elapsed_time = check_convergence(wrapper_fi, 250, 250)
     else:
-        fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', samples=3000) # TODO: change default
+        fi_values, elapsed_time = compute_sage(model, X, y, removal='surrogate', samples=1000)
 
     return fi_values, elapsed_time
 
@@ -89,7 +89,6 @@ def loco_mse(model, X, y, data):
 def loco_ba(model, X, y, data):
     threshold = get_threshold(data)
     return compute_loco_custom(model, X, y, scoring='balanced_accuracy', threshold=threshold)
-
 
 
 def check_convergence(wrapper_fi, start, step, stop=0.025):
