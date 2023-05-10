@@ -11,6 +11,7 @@ import seaborn as sns  # correlogram
 import torch
 import xgboost
 import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import pairwise_distances
 
 # Get functions in other Python scripts
 
@@ -39,6 +40,13 @@ def normalise(array):
     else:
         warnings.warn("Array not normalised: array.max() - array.min()) = 0.")
         return array
+
+
+def compute_correlation_custom(X):
+
+    corr_df = pd.DataFrame(1 - pairwise_distances(X.T.to_numpy(), metric='jaccard'),
+                              index=X.columns, columns=X.columns)
+    return corr_df
 
 
 def wrapper_predict(ml_model, X, prob=True, threshold=0.5):
