@@ -32,6 +32,9 @@ def get_model(X_train, y_train, model, data=None, output_folder=None, rerun=True
         ml_model = joblib.load(file_name)
         coef_model = pd.read_csv(output_folder / "models" / str(f"{data}-{model}-coef.csv"))
 
+        # TODO: if file not exists gives error (no issue; but would be better to give warning as
+        #  this occurs when no model was trained because modified data == orignal data
+
     print("> get_model done")
     return ml_model, coef_model
 
