@@ -14,6 +14,8 @@ from datetime import date
 # Get functions in other Python scripts
 from evaluation_metrics import *
 
+import warnings
+warnings.filterwarnings('ignore')
 
 def aggregate(data, model, output_folder):
     fi_files = os.listdir(output_folder / "feature_importance")
