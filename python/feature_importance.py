@@ -285,11 +285,11 @@ def compute_sage(model, X, y, removal='marginal', samples=1000, binary_outcome=T
 
         surr = nn.Sequential(
                 MaskLayer1d(value=0, append=True),
-                nn.Linear(2 * num_features, 128),
+                nn.Linear(2 * num_features, 64),
                 nn.ELU(inplace=True),
-                nn.Linear(128, 128),
+                nn.Linear(64, 64),
                 nn.ELU(inplace=True),
-                nn.Linear(128, 2)).to(device)
+                nn.Linear(64, 2)).to(device)
 
         surrogate = Surrogate(surr, num_features)
 

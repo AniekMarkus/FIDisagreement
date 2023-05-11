@@ -78,17 +78,21 @@ def fit_xgboost(X_train, y_train):
 
 def fit_nn(X_train, y_train):
     # TODO: check hyperparameters
-    n_input, n_hidden, n_out, batch_size, learning_rate = X_train.shape[1], 15, 1, 100, 0.01
+    n_input, n_out, batch_size, learning_rate = X_train.shape[1], 1, 100, 0.01
 
     data_x = torch.tensor(X_train.values, dtype=torch.float32)
     data_y = torch.tensor(y_train.values, dtype=torch.float32).reshape(-1, 1)
 
-    ml_model = nn.Sequential(nn.Linear(n_input, n_hidden),
+    ml_model = nn.Sequential(nn.Linear(n_input, 16),
                              nn.ReLU(),
-                             nn.Linear(n_hidden, n_out),
+                             nn.Linear(16, 32),
+                             nn.ReLU(),
+                             nn.Linear(32, 16),
+                             nn.ReLU(),
+                             nn.Linear(16, n_out),
                              nn.Sigmoid())
 
-    loss_function = nn.MSELoss() # TODO: check which loss function alternative nn.BCELoss()
+    loss_function = nn.BCELoss()
     optimizer = torch.optim.SGD(ml_model.parameters(), lr=learning_rate)
 
     losses = []
