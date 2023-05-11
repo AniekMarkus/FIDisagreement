@@ -88,13 +88,13 @@ def load_data(data, root_folder):
 
 def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, rerun):
     data_folder = output_folder / "data"
-    change = False
 
     if rerun:
+        change = False
         if params != '':
             # Modify data
             if params['change'] == "baseline":
-                # For verson v0 do continue analysis
+                # For version v0 do continue analysis
                 change=True
 
             elif params['change'] == "num_features":
@@ -200,21 +200,41 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, r
 
                             X_train[predictor].iloc[selected_rows_p] = 0  # remove records binary vars by imputing zeros
 
-        # Save modified data
-        X_train.to_csv(data_folder / str(f"{data}-Xtrain.csv"), index=False)
-        pd.DataFrame(y_train).to_csv(data_folder / str(f"{data}-ytrain.csv"), index=False)
+            # Save modified data if changed
+            if change:
+                X_train.to_csv(data_folder / str(f"{data}-Xtrain.csv"), index=False)
+                pd.DataFrame(y_train).to_csv(data_folder / str(f"{data}-ytrain.csv"), index=False)
 
-        X_test.to_csv(data_folder / str(f"{data}-Xtest.csv"), index=False)
-        pd.DataFrame(y_test).to_csv(data_folder / str(f"{data}-ytest.csv"), index=False)
-        print("> modify_data done")
+                X_test.to_csv(data_folder / str(f"{data}-Xtest.csv"), index=False)
+                pd.DataFrame(y_test).to_csv(data_folder / str(f"{data}-ytest.csv"), index=False)
+                print("> modify_data done")
 
-    elif params == '':
-        # For baseline run do continue analysis
-        change=True
-        print("> modify_data skip")
+        elif params == '':
+            # For baseline run do continue analysis
+            change=True
+            print("> modify_data skip")
+
+    else:
+        fileName = data_folder / str(f"{data}-Xtrain.csv")
+
+        if os.path.exists(fileName):
+            # Load modified data
+            X_train = pd.read_csv(fileName)
+            y_train = pd.read_csv(data_folder / str(f"{data}-ytrain.csv"))
+
+            X_test = pd.read_csv(data_folder / str(f"{data}-Xtest.csv"))
+            y_test = pd.read_csv(data_folder / str(f"{data}-ytest.csv"))
+
+            # If modified data exists continue analysis
+            change=True
+            print("> modify_data load")
+
+        else:
+            # Do not continue to model
+            change=False
+            print("> modify_data does not exist")
 
     return X_train, X_test, y_train, y_test, change
-
 
 
 # TODO: think about reusing parts of the simulated data to resolve differences? or replicate, but how many times?
