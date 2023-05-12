@@ -105,7 +105,7 @@ if __name__ =='__main__':
             40: {"change": "correlation", "value": 0.9, "method": "univariate"},
             41: {"change": "correlation", "value": 0.7, "method": "univariate"},
             42: {"change": "correlation", "value": 0.5, "method": "univariate"},
-            # 43: {"change": "correlation", "value": 0.3, "method": "univariate"},
+            43: {"change": "correlation", "value": 0.3, "method": "univariate"},
             50: {"change": "prev_features", "value": 0.05, "method": "random"},
             51: {"change": "prev_features", "value": 0.10526, "method": "random"}, # cumulative removed = 0.15 -> (0.95-0.85)/0.95
             52: {"change": "prev_features", "value": 0.11765, "method": "random"}  # cumulative removed = 0.25 -> (0.85-0.75)/0.85
@@ -119,14 +119,22 @@ if __name__ =='__main__':
           f'modify_data = {args.modify_data}, run_model = {args.run_model}, run_data = {args.run_data}, clean = {args.clean}')
 
     # RUN ANALYSIS
+    previous_change="baseline"
     for repeat in range(1, args.repeats + 1):
-        # Data
-        X_train, X_test, y_train, y_test = get_data(args.data, repeat, root_folder, output_folder, args.run_data)
-
         for p in modify_params.keys():
+            params = modify_params[p]
+
+            # Get data at start and when going to different kind of change
+            if (params['change'] == "baseline") or (params['change'] != previous_change):
+                print("Get new data for " + str(p))
+                X_train, X_test, y_train, y_test = get_data(args.data, repeat, root_folder, output_folder, args.run_data)
+
+                # Update previous change
+                previous_change=params['change']
+
             data = str(f"{args.data}-{repeat}-v{p}")
 
-            X_train, X_test, y_train, y_test, change = modify_data(data, output_folder, modify_params[p], X_train, X_test, y_train, y_test, args.run_data)
+            X_train, X_test, y_train, y_test, change = modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, args.run_data)
 
             # Do not run remaining analysis if data empty or no change after modification
             if (X_train.shape[0] > 0 and X_train.shape[1] > 0) and change:

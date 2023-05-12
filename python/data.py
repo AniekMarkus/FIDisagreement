@@ -168,6 +168,11 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, r
                         # cor_matrix = compute_correlation_custom(X_train)
                         cor_matrix = X.corr(method="spearman")
 
+                        # Remove variance on diagonal + upper/lower triangle and take absolute value
+                        diag_matrix = np.zeros((X.shape[1], X.shape[1]), int)
+                        np.fill_diagonal(diag_matrix, 1)
+                        cor_matrix = np.abs(cor_matrix - diag_matrix)
+
                         # Find features above threshold and remove remaining features for further computation
                         selected_vars = cor_matrix.index[(cor_matrix>params['value']).any()]
                         X = X.loc[:, selected_vars]
