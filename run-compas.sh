@@ -37,7 +37,7 @@ do
   for m in logistic nn xgboost
     do
       python python/experiments.py $d $m permutation_auc 5 $folder --modify-data
-      for f in permutation_mse permutation_ba loco_auc loco_mse loco_ba sage_marginal sage_conditional kernelshap
+      for f in permutation_mse permutation_ba loco_auc loco_mse loco_ba sage_marginal kernelshap # sage_conditional
       do
           echo "Run for dataset $d model $m and feature importance method $f"
           python python/experiments.py $d $m $f 5 $folder --modify-data --use-model
