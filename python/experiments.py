@@ -113,7 +113,7 @@ if __name__ =='__main__':
         pd.DataFrame.from_dict(modify_params, orient="index").to_csv(output_folder / "data" / "modify_params.csv")
 
     else:
-        modify_params={0: ''}
+        modify_params={ 0: {"change": "baseline"}}
 
     print(f'Parameters : data = {args.data}, model = {args.model}, fi_method = {args.fi_method}, repeats = {args.repeats}, '
           f'modify_data = {args.modify_data}, run_model = {args.run_model}, run_data = {args.run_data}, clean = {args.clean}')

@@ -91,133 +91,129 @@ def modify_data(data, output_folder, params, X_train, X_test, y_train, y_test, r
 
     if rerun:
         change = False
-        if params != '':
-            # Modify data
-            if params['change'] == "baseline":
-                # For version v0 do continue analysis
-                change=True
 
-            elif params['change'] == "num_features":
-                if params['method'] == "random":
-                    # Randomly select subset of features (change X data)
-                    selected_vars = random.sample(range(X_train.shape[1]), min(params["value"], X_train.shape[1]))
+        # Modify data
+        if params['change'] == "baseline":
+            # For version v0 / baseline run do continue analysis
+            change=True
+            print("> modify_data skip")
 
-                    # Check if change occurred
-                    if len(selected_vars) < X_train.shape[1]:
-                        change = True
+        elif params['change'] == "num_features":
+            if params['method'] == "random":
+                # Randomly select subset of features (change X data)
+                selected_vars = random.sample(range(X_train.shape[1]), min(params["value"], X_train.shape[1]))
 
-                    X_train = X_train.iloc[:, selected_vars]
-                    X_test = X_test.iloc[:, selected_vars]
+                # Check if change occurred
+                if len(selected_vars) < X_train.shape[1]:
+                    change = True
 
-            elif params['change'] == "num_obs":
-                if params['method'] == "random":
-                    # Randomly select subset of observations (change train set)
-                    selected_rows = random.sample(range(X_train.shape[0]), min(params["value"], X_train.shape[0]))
+                X_train = X_train.iloc[:, selected_vars]
+                X_test = X_test.iloc[:, selected_vars]
 
-                    # Check if change occurred
-                    if len(selected_rows) < X_train.shape[0]:
-                        change = True
+        elif params['change'] == "num_obs":
+            if params['method'] == "random":
+                # Randomly select subset of observations (change train set)
+                selected_rows = random.sample(range(X_train.shape[0]), min(params["value"], X_train.shape[0]))
 
-                    X_train = X_train.iloc[selected_rows]
-                    y_train = y_train.iloc[selected_rows]
+                # Check if change occurred
+                if len(selected_rows) < X_train.shape[0]:
+                    change = True
 
-            elif params['change'] == "num_outcomes":
-                if params['method'] == "random":
-                    # Reset index
-                    X_train.reset_index(drop=True, inplace=True)
-                    y_train.reset_index(drop=True, inplace=True)
+                X_train = X_train.iloc[selected_rows]
+                y_train = y_train.iloc[selected_rows]
 
-                    # Randomly select subset of outcomes while keeping non-outcomes (change train set)
-                    rows_zeros = y_train.index[y_train == 0]
-                    rows_ones = y_train.index[y_train == 1]
+        elif params['change'] == "num_outcomes":
+            if params['method'] == "random":
+                # Reset index
+                X_train.reset_index(drop=True, inplace=True)
+                y_train.reset_index(drop=True, inplace=True)
 
-                    selected_ones = random.sample(list(rows_ones), min(params["value"], len(rows_ones)))
-                    selected_rows = list(selected_ones) + list(rows_zeros)
+                # Randomly select subset of outcomes while keeping non-outcomes (change train set)
+                rows_zeros = y_train.index[y_train == 0]
+                rows_ones = y_train.index[y_train == 1]
 
-                    # Check if change occurred
-                    if len(selected_rows) < X_train.shape[0]:
-                        change = True
+                selected_ones = random.sample(list(rows_ones), min(params["value"], len(rows_ones)))
+                selected_rows = list(selected_ones) + list(rows_zeros)
 
-                    X_train = X_train.iloc[selected_rows]
-                    y_train = y_train.iloc[selected_rows]
+                # Check if change occurred
+                if len(selected_rows) < X_train.shape[0]:
+                    change = True
 
-            elif params['change'] == "correlation":
-                # Remove features with correlation above certain threshold (change X data)
-                if params['method'] == "univariate":
-                    # TODO: implement scalable way to compute this
+                X_train = X_train.iloc[selected_rows]
+                y_train = y_train.iloc[selected_rows]
+
+        elif params['change'] == "correlation":
+            # Remove features with correlation above certain threshold (change X data)
+            if params['method'] == "univariate":
+                # TODO: implement scalable way to compute this
+                # cor_matrix = compute_correlation_custom(X_train)
+                cor_matrix = X_train.corr(method="spearman")
+
+                # Remove variance on diagonal + upper/lower triangle and take absolute value
+                diag_matrix = np.zeros((X_train.shape[1], X_train.shape[1]), int)
+                np.fill_diagonal(diag_matrix, 1)
+                cor_matrix = np.abs(cor_matrix - diag_matrix)
+
+                # Find features above threshold and remove remaining features for further computation
+                selected_vars = cor_matrix.index[(cor_matrix>params['value']).any()]
+                X = X_train.loc[:, selected_vars]
+
+                # Remove those one by one
+                removed_vars = []
+
+                while selected_vars.shape[0] > 0:
+                    f = selected_vars[-1]  # Starting with last, assuming less important
+                    X = X.drop(f, axis=1)
+                    removed_vars.append(f)
+
                     # cor_matrix = compute_correlation_custom(X_train)
-                    cor_matrix = X_train.corr(method="spearman")
+                    cor_matrix = X.corr(method="spearman")
 
                     # Remove variance on diagonal + upper/lower triangle and take absolute value
-                    diag_matrix = np.zeros((X_train.shape[1], X_train.shape[1]), int)
+                    diag_matrix = np.zeros((X.shape[1], X.shape[1]), int)
                     np.fill_diagonal(diag_matrix, 1)
                     cor_matrix = np.abs(cor_matrix - diag_matrix)
 
                     # Find features above threshold and remove remaining features for further computation
                     selected_vars = cor_matrix.index[(cor_matrix>params['value']).any()]
-                    X = X_train.loc[:, selected_vars]
+                    X = X.loc[:, selected_vars]
 
-                    # Remove those one by one
-                    removed_vars = []
+                # Check if change occurred
+                if len(removed_vars) > 0:
+                    change = True
 
-                    while selected_vars.shape[0] > 0:
-                        f = selected_vars[-1]  # Starting with last, assuming less important
-                        X = X.drop(f, axis=1)
-                        removed_vars.append(f)
+                # Remove from X data
+                X_train = X_train.drop(removed_vars, axis=1)
+                X_test = X_test.drop(removed_vars, axis=1)
 
-                        # cor_matrix = compute_correlation_custom(X_train)
-                        cor_matrix = X.corr(method="spearman")
+        elif params['change'] == "prev_features":
+            # Randomly remove ones for features (change X train data)
+            if params['method'] == "random":
 
-                        # Remove variance on diagonal + upper/lower triangle and take absolute value
-                        diag_matrix = np.zeros((X.shape[1], X.shape[1]), int)
-                        np.fill_diagonal(diag_matrix, 1)
-                        cor_matrix = np.abs(cor_matrix - diag_matrix)
+                # Iterate through each predictor
+                for predictor in X_train.columns:
+                    var = X_train[predictor]
 
-                        # Find features above threshold and remove remaining features for further computation
-                        selected_vars = cor_matrix.index[(cor_matrix>params['value']).any()]
-                        X = X.loc[:, selected_vars]
+                    if ((var==0) | (var==1)).all(): # Check if binary variable
+                        count = var.sum()
+                        remove = np.ceil(count*params["value"])
 
-                    # Check if change occurred
-                    if len(removed_vars) > 0:
-                        change = True
+                        selected_rows_p = random.sample(range(X_train.shape[0]), remove.astype(int))
 
-                    # Remove from X data
-                    X_train = X_train.drop(removed_vars, axis=1)
-                    X_test = X_test.drop(removed_vars, axis=1)
+                        # Check if change occurred
+                        if len(selected_rows_p) > 0:
+                            change = True
 
-            elif params['change'] == "prev_features":
-                # Randomly remove ones for features (change X train data)
-                if params['method'] == "random":
+                        X_train[predictor].iloc[selected_rows_p] = 0  # remove records binary vars by imputing zeros
 
-                    # Iterate through each predictor
-                    for predictor in X_train.columns:
-                        var = X_train[predictor]
+        # Save modified data if changed
+        if change:
+            X_train.to_csv(data_folder / str(f"{data}-Xtrain.csv"), index=False)
+            pd.DataFrame(y_train).to_csv(data_folder / str(f"{data}-ytrain.csv"), index=False)
 
-                        if ((var==0) | (var==1)).all(): # Check if binary variable
-                            count = var.sum()
-                            remove = np.ceil(count*params["value"])
-
-                            selected_rows_p = random.sample(range(X_train.shape[0]), remove.astype(int))
-
-                            # Check if change occurred
-                            if len(selected_rows_p) > 0:
-                                change = True
-
-                            X_train[predictor].iloc[selected_rows_p] = 0  # remove records binary vars by imputing zeros
-
-            # Save modified data if changed
-            if change:
-                X_train.to_csv(data_folder / str(f"{data}-Xtrain.csv"), index=False)
-                pd.DataFrame(y_train).to_csv(data_folder / str(f"{data}-ytrain.csv"), index=False)
-
-                X_test.to_csv(data_folder / str(f"{data}-Xtest.csv"), index=False)
-                pd.DataFrame(y_test).to_csv(data_folder / str(f"{data}-ytest.csv"), index=False)
-                print("> modify_data done")
-
-        elif params == '':
-            # For baseline run do continue analysis
-            change=True
-            print("> modify_data skip")
+            X_test.to_csv(data_folder / str(f"{data}-Xtest.csv"), index=False)
+            pd.DataFrame(y_test).to_csv(data_folder / str(f"{data}-ytest.csv"), index=False)
+            print("> modify_data done")
 
     else:
         fileName = data_folder / str(f"{data}-Xtrain.csv")
