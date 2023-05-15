@@ -90,16 +90,18 @@ def update_graph_bottom(
     fimethod,
     metric
 ):
-    complexity_plot_K = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v1", model, fimethod, metric)
-    complexity_plot_N = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v2", model, fimethod, metric)
-    complexity_plot_rho = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v4", model, fimethod, metric)
+    complexity_features = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v1", model, fimethod, metric)
+    complexity_observations = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v2", model, fimethod, metric)
+    complexity_outcomes = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v3", model, fimethod, metric)
+    complexity_correlation = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v4", model, fimethod, metric)
+    complexity_prevalance = figs.complexity_plot(output_folder, color_dict, modify_params, dataset, "v5", model, fimethod, metric)
 
     return [
         html.Div(
             id="graph-container0",
             children=dcc.Loading(
                 className="graph-wrapper",
-                children=dcc.Graph(id="complexity_plot", figure=complexity_plot_K),
+                children=dcc.Graph(id="complexity_plot", figure=complexity_features),
                 style={"display": "none"}
             )
         ),
@@ -107,7 +109,7 @@ def update_graph_bottom(
             id="graph-container0",
             children=dcc.Loading(
                 className="graph-wrapper",
-                children=dcc.Graph(id="complexity_plot", figure=complexity_plot_N),
+                children=dcc.Graph(id="complexity_plot", figure=complexity_observations),
                 style={"display": "none"}
             )
         ),
@@ -115,7 +117,23 @@ def update_graph_bottom(
             id="graph-container0",
             children=dcc.Loading(
                 className="graph-wrapper",
-                children=dcc.Graph(id="complexity_plot", figure=complexity_plot_rho),
+                children=dcc.Graph(id="complexity_plot", figure=complexity_outcomes),
+                style={"display": "none"}
+            )
+        ),
+        html.Div(
+            id="graph-container0",
+            children=dcc.Loading(
+                className="graph-wrapper",
+                children=dcc.Graph(id="complexity_plot", figure=complexity_correlation),
+                style={"display": "none"}
+            )
+        ),
+        html.Div(
+            id="graph-container0",
+            children=dcc.Loading(
+                className="graph-wrapper",
+                children=dcc.Graph(id="complexity_plot", figure=complexity_prevalance),
                 style={"display": "none"}
             )
         )

@@ -56,7 +56,8 @@ def evaluate_disagreement(data, feature_importance, output_folder):
 
     # Calculate evaluation metrics
     for i, row in feature_importance.iterrows():
-        for j in range(i+1):
+        for j, row in feature_importance.iterrows():
+        # for j in range(i+1):
             cols = ['data', 'version', 'model', 'fi_method']
             fi_meth1 = feature_importance.iloc[i]
             fi_meth2 = feature_importance.iloc[j]

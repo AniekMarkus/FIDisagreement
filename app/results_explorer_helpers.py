@@ -79,22 +79,27 @@ def combine_fi(fi, settings_data):
     return fi
 
 
-def get_metrics(output_folder, dataset, version, model, fimethod, metrics):
+def get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, summarize=False):
     # Load file
-    eval_metrics = pd.read_csv(output_folder / "result" / str(f"{dataset}-{version}-{model}-eval_metrics.csv"))
-    eval_metrics = eval_metrics.loc[(eval_metrics.fi_method1.isin(fimethod) | eval_metrics.fi_method2.isin(fimethod)), :]
+    res_metrics = pd.read_csv(output_folder / "result" / str(f"{dataset}-{version}-{model}-eval_metrics.csv"))
+    res_metrics = res_metrics.loc[(res_metrics.fi_method1.isin(fimethod) | res_metrics.fi_method2.isin(fimethod)), :]
 
     # Save names
-    eval_names = eval_metrics.loc[:, eval_metrics.columns.isin(['fi_method1', 'fi_method2'])]
+    eval_names = res_metrics.loc[:, res_metrics.columns.isin(['fi_method1', 'fi_method2'])]
 
     # Correct input type
-    if not isinstance(metrics, list):
-        metrics = [metrics]
+    if not isinstance(eval_metrics, list):
+        eval_metrics = [eval_metrics]
 
-    eval_metrics = eval_metrics.loc[:, eval_metrics.columns.isin(metrics)]
+    # Select metrics
+    res_metrics = res_metrics.loc[:, res_metrics.columns.isin(eval_metrics)]
 
     # Reverse values (so higher is always more agreement)
-    cols = eval_metrics.columns.isin(['mae', 'rmse', 'r2'])
-    eval_metrics.loc[:, cols]=eval_metrics.loc[:, cols].apply(lambda c: 1-normalise(c), axis=0)
+    cols = res_metrics.columns.isin(['mae', 'rmse', 'r2'])
+    res_metrics.loc[:, cols]=res_metrics.loc[:, cols].apply(lambda c: 1-normalise(c), axis=0)
 
-    return eval_metrics, eval_names
+    # Take mean across different metrics
+    if summarize:
+        res_metrics = res_metrics.mean(axis=1)
+
+    return res_metrics, eval_names

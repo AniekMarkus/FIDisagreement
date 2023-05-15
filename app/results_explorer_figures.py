@@ -46,7 +46,7 @@ def fi_values(output_folder,
     plot_data['colors'] = plot_data['fi_method'].map(color_dict)
 
     figure = go.Figure(layout=std_layout)
-    for m in fimethod:  # m = "permutation_auc"
+    for m in plot_data.fi_method.unique():  # m = "permutation_auc"
         values = plot_data.loc[plot_data.fi_method == m, :]
         # values = values.iloc[order_variable, :]
         values = values.reset_index(drop=True)
@@ -78,7 +78,8 @@ def fi_values(output_folder,
         xaxis=dict(title="Variables"),
         yaxis=dict(title="Importance (scaled)"))
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_values.svg')
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_values.svg',
+                       width=500, height=500)
 
     return figure
 
@@ -117,7 +118,8 @@ def fi_ranking(output_folder,
         yaxis=dict(title="Ranking"),
         showlegend=False)
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_ranking.svg')
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_ranking.svg',
+                       width=500, height=500)
 
     return figure
 
@@ -140,6 +142,9 @@ def fi_topfeatures(output_folder,
     fi_rank = fi_rank.groupby(by=['variable', 'fi_method'], group_keys=True, as_index=False).mean()
     fi_values = fi_values.groupby(by=['variable', 'fi_method'], group_keys=True, as_index=False).mean()
 
+    # Update which methods occur in data
+    fimethod = fi_values.fi_method.unique()
+
     # Translate long to wide format
     fi_rank = pd.pivot(fi_rank, index='variable', columns='fi_method', values='value')
     fi_rank.reset_index(inplace=True)
@@ -147,7 +152,6 @@ def fi_topfeatures(output_folder,
     fi_values = pd.pivot(fi_values, index='variable', columns='fi_method', values='value')
     fi_values.reset_index(inplace=True)
 
-    # figure = make_subplots(1, len(fimethod), subplot_titles=fimethod)
     figure = go.Figure(layout=std_layout).set_subplots(1, len(fimethod), horizontal_spacing=0.1, subplot_titles=fimethod)
     for i in range(1, len(fimethod)+1):
         m = fimethod[i-1]
@@ -169,32 +173,42 @@ def fi_topfeatures(output_folder,
     figure.update_annotations(font_size=10)
     figure.update_xaxes(visible=False)
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_topfeatures.svg')
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_topfeatures.svg',
+                       width=500, height=500)
 
     return figure
 
 
 def fi_metrics(output_folder,
+               fig_name,
                color_dict,
                dataset = "iris",
-               version = "v10",
+               version = "v0",
                model = "logistic",
                fimethod = ["permutation_auc", "permutation_ba"],
-               eval_metrics = ["overlap", "mae"]):
+               eval_metrics = ["overlap", "mae"],
+               summarize = False):
 
     # Get feature importance metrics
-    eval_metrics, eval_names = get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics)
+    res_metrics, eval_names = get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, summarize)
 
     # For visualization purposes show small number instead of zero
-    eval_metrics[eval_metrics == 0] = 0.01
+    res_metrics[res_metrics == 0] = 0.01
 
     # Change names cols
     # TODO: create dictionary for names/labels (like colors)
     # metrics_data.columns = ["Top-5", "Sign agreement", "Kendall's tau", "1-MAE"]
 
     # Combine and translate wide to long format
-    metrics_data = pd.concat([eval_names, eval_metrics], axis=1)
-    metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars=eval_metrics, var_name="metrics", ignore_index=False)
+    if summarize:
+        metrics_data = pd.concat([eval_names, res_metrics.rename('disagreement')], axis=1)
+        metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars='disagreement', var_name="metrics", ignore_index=False)
+    else:
+        metrics_data = pd.concat([eval_names, res_metrics], axis=1)
+        metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars=eval_metrics, var_name="metrics", ignore_index=False)
+
+    # Change names cols
+    # metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict},inplace=True)
 
     # Grouped box plot
     comparison = [fimethod[0]]
@@ -222,19 +236,75 @@ def fi_metrics(output_folder,
     figure.add_annotation(font=dict(size=10), x=0, y=-0.5, text="Note: higher values indicate more agreement.",
                           showarrow=False, textangle=0, xanchor='left', xref="paper", yref="paper")
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_metrics.svg')
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_metrics-{fig_name}.svg',
+                       width=500, height=500)
+
+    return figure
+
+
+def heatmap_disagreement(output_folder,
+                         fig_name,
+                         dataset = "iris",
+                         version = "v0",
+                         model = "logistic",
+                         fimethod = ["permutation_auc", "permutation_ba"],
+                         eval_metrics = ["overlap", "mae"]):
+
+    # Need one output value
+    if len(eval_metrics) > 1:
+        summarize = True
+    else:
+        summarize = False
+
+    # Get feature importance metrics
+    res_metrics, eval_names = get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, summarize)
+
+    # For visualization purposes show small number instead of zero
+    res_metrics[res_metrics == 0] = 0.01
+
+    # Combine and translate wide to long format
+    metrics_data = pd.concat([eval_names, res_metrics.rename('disagreement')], axis=1)
+
+    # Change names cols
+    metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict},inplace=True)
+    metrics_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="disagreement")
+
+    # Generate a mask for the upper triangle
+    # mask = np.triu(np.ones_like(corr, dtype=bool))
+
+    # Generate a custom diverging colormap
+    # cmap = sns.diverging_palette(230, 20, as_cmap=True)
+
+    # Draw the heatmap with the mask and correct aspect ratio
+    # sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3, center=0,
+    #             square=True, linewidths=.5, cbar_kws={"shrink": .5})
+    #
+    #
+    # plt.title('Correlogram of features')
+    # return plt.show()
+
+    # colorscale = [[0.0, "rgb(165,0,38)"],
+    #               [0.5, "rgb(165,0,38)"]
+    #               [1.0, "rgb(49,54,149)"]]
+
+    figure = go.Figure(data=go.Heatmap(z=metrics_data, zmin=0, zmax=1, colorscale='RdBu', texttemplate="%{text:.2f}",
+                                       text=metrics_data, x=metrics_data.index, y=metrics_data.columns))
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap-{fig_name}.svg',
+                       width=500, height=500)
 
     return figure
 
 
 def complexity_plot(output_folder,
+                    fig_name,
                     color_dict,
                     modify_params,
                     dataset="iris",
                     version="v2",
                     model="logistic",
                     fimethod=["permutation_auc", "permutation_ba"],
-                    metric="mae"):
+                    metrics="mae"):
 
     # Get feature importance metrics for all versions
     version_list = os.listdir(output_folder / "result")
@@ -245,9 +315,9 @@ def complexity_plot(output_folder,
     all_metrics = pd.DataFrame()
 
     for v in version_list:
-        eval_metrics, eval_names = get_metrics(output_folder, dataset, v, model, fimethod, metric)
+        eval_metrics, eval_names = get_metrics(output_folder, dataset, v, model, fimethod, metrics, summarize=True)
 
-        metrics_v = pd.concat([eval_names, eval_metrics], axis=1)
+        metrics_v = pd.concat([eval_names, eval_metrics.rename('disagreement')], axis=1)
         metrics_v["version"] = v
 
         all_metrics = all_metrics.append(metrics_v)
@@ -265,16 +335,19 @@ def complexity_plot(output_folder,
             go.Scatter(
                 name=fi,
                 x=values.value,  # version
-                y=values[metric],
-                mode='lines',
+                y=values.disagreement,
+                # mode='markers',
                 line=dict(color=color_dict[fi])
             )])
 
-    figure.update_layout(title=str("Effect of modifications " + version),
-                         xaxis=dict(title="Varying data complexity"),
-                         yaxis=dict(title="Agreement"))
+    # Sort x axis by increasing values = more complexity
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity.svg')
+    figure.update_layout(# title=str("Effect of modifications " + version),
+                         xaxis=dict(title="Increasing data complexity", tickmode='array', tickvals=values.value),
+                         yaxis=dict(title="Agreement", range=[0,1]))
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity-{fig_name}.svg',
+                       width=500, height=500)
 
     return figure
 

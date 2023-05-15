@@ -35,7 +35,7 @@ layout = html.Div(id="app-container",  # id="app-container",
                                             options=versions,
                                             clearable=False,
                                             searchable=False,
-                                            value=versions[0],
+                                            value="v0",
                                         ),
                                         drc.NamedDropdown(
                                             name="Select Model",
