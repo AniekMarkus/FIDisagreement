@@ -62,9 +62,6 @@ def combine_fi(fi, settings_data):
     # Add variable names
     fi.reset_index(inplace=True, drop=False)
 
-    # Save order of variables
-    # order_variable = fi_values.variable
-
     # Translate wide to long format
     fi = pd.melt(fi, id_vars= "variable", var_name="method")
 
@@ -85,7 +82,7 @@ def get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, 
     res_metrics = res_metrics.loc[(res_metrics.fi_method1.isin(fimethod) | res_metrics.fi_method2.isin(fimethod)), :]
 
     # Save names
-    eval_names = res_metrics.loc[:, res_metrics.columns.isin(['fi_method1', 'fi_method2'])]
+    eval_names = res_metrics.loc[:, res_metrics.columns.isin(['repeat', 'fi_method1', 'fi_method2'])]
 
     # Correct input type
     if not isinstance(eval_metrics, list):
@@ -94,11 +91,26 @@ def get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, 
     # Select metrics
     res_metrics = res_metrics.loc[:, res_metrics.columns.isin(eval_metrics)]
 
-    # Reverse values (so higher is always more agreement)
-    cols = res_metrics.columns.isin(['mae', 'rmse', 'r2'])
+    # All metrics to same scale
+    # Between 0 and 1 (higher = agreement): 'overlap', 'rank', 'sign', 'ranksign', 'pairwise_comp'(???)
+
+    # Between -1 and 1 (higher = agreement): 'kendalltau', 'pearson'
+    # Normalise values
+    cols = res_metrics.columns.isin(['kendalltau', 'pearson'])
+    res_metrics.loc[:, cols]=res_metrics.loc[:, cols].apply(lambda c: (c - (-1)) / (1 - (-1)), axis=0)
+
+    # Minimum 0 (lower = agreeement) : 'mae', 'rmse'
+    # Normalise + reverse values (so higher is always more agreement)
+    cols = res_metrics.columns.isin(['mae', 'rmse'])
     res_metrics.loc[:, cols]=res_metrics.loc[:, cols].apply(lambda c: 1-normalise(c), axis=0)
 
-    # Take mean across different metrics
+    # Positive and negative values (higher = agreement): 'r2'
+    # Normalise values
+    cols = res_metrics.columns.isin(['r2'])
+    res_metrics.loc[:, cols]=res_metrics.loc[:, cols].apply(lambda c: normalise(c), axis=0)
+
+
+# Take mean across different metrics
     if summarize:
         res_metrics = res_metrics.mean(axis=1)
 

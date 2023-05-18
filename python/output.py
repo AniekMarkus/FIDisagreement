@@ -17,7 +17,7 @@ from evaluation_metrics import *
 import warnings
 warnings.filterwarnings('ignore')
 
-def aggregate(data, model, output_folder):
+def aggregate_fi(data, model, output_folder):
     fi_files = os.listdir(output_folder / "feature_importance")
     fi_files = list(filter(lambda v: re.findall(data, v), fi_files))
     fi_files = list(filter(lambda v: re.findall(model, v), fi_files))
@@ -39,39 +39,67 @@ def aggregate(data, model, output_folder):
 
     feature_importance.transpose().to_csv(f'{output_folder}/result/{data}-{model}-aggregate.csv', header=False)
 
-    print("> aggregate done")
+    print("> aggregate feature importance done")
     return feature_importance
+
+def aggregate_performance(data, model, output_folder):
+    perf_files = os.listdir(output_folder / "models")
+    perf_files = list(filter(lambda v: re.findall(data, v), perf_files))
+    perf_files = list(filter(lambda v: re.findall(model, v), perf_files))
+    perf_files = list(filter(lambda v: re.findall("perf", v), perf_files))
+
+    performance = pd.DataFrame(columns=['data', 'repeat', 'version'])
+
+    for file in perf_files:  # file = perf_files[0]
+        perf = pd.read_csv(output_folder / "models" / file, index_col=0)
+
+        params = file.split(sep="-")
+        info = pd.Series({'data': params[0],
+                          'repeat': params[1],
+                          'version': params[2]}, dtype='object')
+
+        performance = performance.append(info.append(pd.Series(perf.iloc[:,0], index=perf.index)), ignore_index=True)
+        # TODO: fix without ignore_index true
+
+    performance.transpose().to_csv(f'{output_folder}/result/{data}-{model}-aggregate_perf.csv', header=False)
+
+    print("> aggregate performance done")
+    return performance
 
 def evaluate_disagreement(data, feature_importance, output_folder):
     eval_metrics = ['overlap', 'rank', 'sign', 'ranksign', 'pearson', 'kendalltau', 'pairwise_comp', 'mae', 'rmse', 'r2']
     # feature_importance = pd.read_csv(f'{output_folder}/result/{data}-aggregate.csv', index_col=0)
 
-    results = pd.DataFrame(columns=['data', 'model', 'fi_method1', 'fi_method2'])
+    results = pd.DataFrame(columns=['data', 'model', 'fi_method1', 'fi_method2', 'repeat'])
 
     # Impute missings with zero (indicating no model importance)
     feature_importance = feature_importance.fillna(0)  # TODO: or remove these var?
 
     # Average values over repeats
-    feature_importance = feature_importance.groupby(by=['data', 'version', 'model', 'fi_method'], group_keys=True, as_index=False).mean()
+    # feature_importance = feature_importance.groupby(by=['data', 'version', 'model', 'fi_method'], group_keys=True, as_index=False).mean()
 
     # Calculate evaluation metrics
-    for i, row in feature_importance.iterrows():
-        for j, row in feature_importance.iterrows():
-        # for j in range(i+1):
-            cols = ['data', 'version', 'model', 'fi_method']
-            fi_meth1 = feature_importance.iloc[i]
-            fi_meth2 = feature_importance.iloc[j]
+    for r in feature_importance.repeat.unique():
+        feature_importance_r = feature_importance.loc[feature_importance.repeat == r, :].reset_index(drop=True)
 
-            res_metrics = fi_evaluate(fi1=fi_meth1.drop(cols),
-                                       fi2=fi_meth2.drop(cols),
-                                       eval_metrics=eval_metrics)
+        for i, row in feature_importance_r.iterrows():
+            for j, row in feature_importance_r.iterrows():
+            # for j in range(i+1):
+                cols = ['data', 'version', 'model', 'fi_method', 'repeat']
+                fi_meth1 = feature_importance_r.iloc[i]
+                fi_meth2 = feature_importance_r.iloc[j]
 
-            info = pd.Series({'data': fi_meth1['data'],
-                              'model': fi_meth1['model'],
-                              'fi_method1': fi_meth1['fi_method'],
-                              'fi_method2': fi_meth2['fi_method']}, dtype='object')
+                res_metrics = fi_evaluate(fi1=fi_meth1.drop(cols),
+                                           fi2=fi_meth2.drop(cols),
+                                           eval_metrics=eval_metrics)
 
-            results = results.append(info.append(pd.Series(res_metrics, index=eval_metrics)), ignore_index=True)
+                info = pd.Series({'data': fi_meth1['data'],
+                                  'model': fi_meth1['model'],
+                                  'fi_method1': fi_meth1['fi_method'],
+                                  'fi_method2': fi_meth2['fi_method'],
+                                  'repeat': r}, dtype='object')
+
+                results = results.append(info.append(pd.Series(res_metrics, index=eval_metrics)), ignore_index=True)
 
     # Add names to columns
     results.to_csv(f'{output_folder}/result/{data}-eval_metrics.csv', index=False)
@@ -114,7 +142,8 @@ if __name__ =='__main__':
 
     # EVALUATE
     # aggregate results
-    feature_importance = aggregate(args.data, args.model, output_folder)
+    feature_importance = aggregate_fi(args.data, args.model, output_folder)
+    performance = aggregate_performance(args.data, args.model, output_folder)
 
     # compute disagreement for each version of data and model
     for v in feature_importance.version.unique():

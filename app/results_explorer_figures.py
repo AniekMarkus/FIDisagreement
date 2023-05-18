@@ -11,6 +11,7 @@ import plotly
 
 from python.help_functions import *
 from app.results_explorer_helpers import *
+from app.results_explorer_input import FI_name_dict
 
 import plotly.io as pio
 pio.renderers.default = "browser"
@@ -78,7 +79,7 @@ def fi_values(output_folder,
         xaxis=dict(title="Variables"),
         yaxis=dict(title="Importance (scaled)"))
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_values.svg',
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_values.png',
                        width=500, height=500)
 
     return figure
@@ -118,7 +119,7 @@ def fi_ranking(output_folder,
         yaxis=dict(title="Ranking"),
         showlegend=False)
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_ranking.svg',
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_ranking.png',
                        width=500, height=500)
 
     return figure
@@ -173,7 +174,7 @@ def fi_topfeatures(output_folder,
     figure.update_annotations(font_size=10)
     figure.update_xaxes(visible=False)
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_topfeatures.svg',
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_topfeatures.png',
                        width=500, height=500)
 
     return figure
@@ -199,16 +200,20 @@ def fi_metrics(output_folder,
     # TODO: create dictionary for names/labels (like colors)
     # metrics_data.columns = ["Top-5", "Sign agreement", "Kendall's tau", "1-MAE"]
 
+    eval_names.drop("repeat", axis=1, inplace=True)
+
     # Combine and translate wide to long format
     if summarize:
         metrics_data = pd.concat([eval_names, res_metrics.rename('disagreement')], axis=1)
+        metrics_data = metrics_data.groupby(by=['fi_method1', 'fi_method2'], group_keys=True, as_index=False).mean()
         metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars='disagreement', var_name="metrics", ignore_index=False)
     else:
         metrics_data = pd.concat([eval_names, res_metrics], axis=1)
+        metrics_data = metrics_data.groupby(by=['fi_method1', 'fi_method2'], group_keys=True, as_index=False).mean()
         metrics_data = pd.melt(metrics_data, id_vars=["fi_method1", "fi_method2"], value_vars=eval_metrics, var_name="metrics", ignore_index=False)
 
     # Change names cols
-    # metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict},inplace=True)
+    # metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict}, inplace=True)
 
     # Grouped box plot
     comparison = [fimethod[0]]
@@ -236,7 +241,7 @@ def fi_metrics(output_folder,
     figure.add_annotation(font=dict(size=10), x=0, y=-0.5, text="Note: higher values indicate more agreement.",
                           showarrow=False, textangle=0, xanchor='left', xref="paper", yref="paper")
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_metrics-{fig_name}.svg',
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_metrics-{fig_name}.png',
                        width=500, height=500)
 
     return figure
@@ -266,8 +271,15 @@ def heatmap_disagreement(output_folder,
     metrics_data = pd.concat([eval_names, res_metrics.rename('disagreement')], axis=1)
 
     # Change names cols
-    metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict},inplace=True)
-    metrics_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="disagreement")
+    metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict}, inplace=True)
+    metrics_data.drop("repeat", axis=1, inplace=True)
+
+    metrics_data = metrics_data.groupby(by=['fi_method1', 'fi_method2']).agg(['mean', 'std'])
+    metrics_data = metrics_data.droplevel(axis=1, level=0).reset_index()
+
+    mean_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="mean")
+    std_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="std")
+    std_data.to_csv(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap_std-{fig_name}.csv')
 
     # Generate a mask for the upper triangle
     # mask = np.triu(np.ones_like(corr, dtype=bool))
@@ -287,13 +299,22 @@ def heatmap_disagreement(output_folder,
     #               [0.5, "rgb(165,0,38)"]
     #               [1.0, "rgb(49,54,149)"]]
 
-    figure = go.Figure(data=go.Heatmap(z=metrics_data, zmin=0, zmax=1, colorscale='RdBu', texttemplate="%{text:.2f}",
-                                       text=metrics_data, x=metrics_data.index, y=metrics_data.columns))
+    # row_order = FI_name_dict.values()
+    # mean_data = mean_data.iloc[row_order, :].reset_index(drop=True)
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap-{fig_name}.svg',
+    order = [i for i in list(FI_name_dict.values()) if i in mean_data.index]
+
+    figure = go.Figure(data=go.Heatmap(z=mean_data, zmin=0, zmax=1, colorscale='Blues', texttemplate="%{text:.2f}",
+                                       text=mean_data, x=mean_data.index, y=mean_data.columns, showscale=False))
+
+    figure.update_layout(xaxis={'categoryarray': order},
+                         yaxis={'categoryarray': order})
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap-{fig_name}.png',
                        width=500, height=500)
 
     return figure
+
 
 
 def complexity_plot(output_folder,
@@ -322,8 +343,12 @@ def complexity_plot(output_folder,
 
         all_metrics = all_metrics.append(metrics_v)
 
+    # Remove repeat column
+    all_metrics.drop("repeat", axis=1, inplace=True)
+
     # Take mean across fi methods
     plot_data = all_metrics.groupby(by=['fi_method1', 'version'], group_keys=True, as_index=False).mean()
+    # TODO: can add std dev?
 
     plot_data = pd.merge(plot_data, modify_params, on='version')
 
@@ -340,13 +365,16 @@ def complexity_plot(output_folder,
                 line=dict(color=color_dict[fi])
             )])
 
-    # Sort x axis by increasing values = more complexity
+    x_axis={'v1': 'Number of features',
+            'v2': 'Number of observations',
+            'v3': 'Number of outcomes',
+            'v4': 'Feature correlation',
+            'v5': 'Prevalence of features'}
 
-    figure.update_layout(# title=str("Effect of modifications " + version),
-                         xaxis=dict(title="Increasing data complexity", tickmode='array', tickvals=values.value),
-                         yaxis=dict(title="Agreement", range=[0,1]))
+    figure.update_layout(xaxis=dict(title=x_axis[v], tickmode='array', tickvals=values.value),
+                         yaxis=dict(title="Agreement", range=[0, 1]))
 
-    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity-{fig_name}.svg',
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity-{fig_name}.png',
                        width=500, height=500)
 
     return figure
