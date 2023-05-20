@@ -279,36 +279,23 @@ def heatmap_disagreement(output_folder,
 
     mean_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="mean")
     std_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="std")
-    std_data.to_csv(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap_std-{fig_name}.csv')
+    # std_data.to_csv(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap_std-{fig_name}.csv')
+
+    # Order rows and columns
+    order = [i for i in list(FI_name_dict.values()) if i in mean_data.index]
+    mean_data = mean_data.loc[:,order]
+    mean_data = mean_data.loc[order,:]
 
     # Generate a mask for the upper triangle
-    # mask = np.triu(np.ones_like(corr, dtype=bool))
+    mask = np.triu(np.ones_like(mean_data, dtype=bool), k=1)
+    df_mask = mean_data.mask(mask)
 
-    # Generate a custom diverging colormap
-    # cmap = sns.diverging_palette(230, 20, as_cmap=True)
+    figure = go.Figure(data=go.Heatmap(z=df_mask.to_numpy(), zmin=0, zmax=1, colorscale='Blues', texttemplate="%{text:.2f}",
+                                       text=df_mask.to_numpy(), x=mean_data.index, y=mean_data.columns, showscale=False))
 
-    # Draw the heatmap with the mask and correct aspect ratio
-    # sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3, center=0,
-    #             square=True, linewidths=.5, cbar_kws={"shrink": .5})
-    #
-    #
-    # plt.title('Correlogram of features')
-    # return plt.show()
-
-    # colorscale = [[0.0, "rgb(165,0,38)"],
-    #               [0.5, "rgb(165,0,38)"]
-    #               [1.0, "rgb(49,54,149)"]]
-
-    # row_order = FI_name_dict.values()
-    # mean_data = mean_data.iloc[row_order, :].reset_index(drop=True)
-
-    order = [i for i in list(FI_name_dict.values()) if i in mean_data.index]
-
-    figure = go.Figure(data=go.Heatmap(z=mean_data, zmin=0, zmax=1, colorscale='Blues', texttemplate="%{text:.2f}",
-                                       text=mean_data, x=mean_data.index, y=mean_data.columns, showscale=False))
-
-    figure.update_layout(xaxis={'categoryarray': order},
-                         yaxis={'categoryarray': order})
+    figure.update_layout(# xaxis={'categoryarray': order},
+                         # yaxis={'categoryarray': order},
+                         yaxis_autorange='reversed')
 
     figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap-{fig_name}.png',
                        width=500, height=500)
@@ -330,6 +317,7 @@ def complexity_plot(output_folder,
     # Get feature importance metrics for all versions
     version_list = os.listdir(output_folder / "result")
     version_list = list(filter(lambda v: re.findall(dataset, v), version_list))
+    version_list = list(filter(lambda v: re.findall(model, v), version_list))
     version_list = list(filter(lambda v: re.findall(version, v), version_list))
     version_list = list(set(map(lambda v: v.split(sep="-")[1], version_list)))
 
@@ -371,7 +359,7 @@ def complexity_plot(output_folder,
             'v4': 'Feature correlation',
             'v5': 'Prevalence of features'}
 
-    figure.update_layout(xaxis=dict(title=x_axis[v], tickmode='array', tickvals=values.value),
+    figure.update_layout(xaxis=dict(title=x_axis[version], tickmode='array', tickvals=values.value),
                          yaxis=dict(title="Agreement", range=[0, 1]))
 
     figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity-{fig_name}.png',
