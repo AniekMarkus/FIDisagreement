@@ -154,8 +154,9 @@ def pairwise_comp(attrA, attrB):
 
 def error_calculation(attrA, attrB, metric):
     # attrA = predicted, attrB = real
-    attrA = normalise(attrA)
-    attrB = normalise(attrB)
+
+    attrA = normalise(np.abs(attrA))
+    attrB = normalise(np.abs(attrB))
 
     if metric == 'mae':  # mean absolute error, best value = 0
         return np.abs(attrA - attrB).mean()

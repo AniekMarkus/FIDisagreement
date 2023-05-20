@@ -51,7 +51,7 @@ def get_rank(output_folder, dataset, version, model, fimethod, scale=False):
     abs_values = fi_values.apply(lambda c: c.abs(), axis=0)
 
     # Transform to rank
-    fi_rank = abs_values.apply(lambda c: c.rank(ascending=False, method='min'), axis=0)
+    fi_rank = abs_values.apply(lambda c: c.rank(ascending=False, method='dense'), axis=0)
 
     # TODO: save fi_rank.to_csv(output_folder / 'ranking_abs_scaled.csv')
 
@@ -79,7 +79,7 @@ def combine_fi(fi, settings_data):
 def get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, summarize=False):
     # Load file
     res_metrics = pd.read_csv(output_folder / "result" / str(f"{dataset}-{version}-{model}-eval_metrics.csv"))
-    res_metrics = res_metrics.loc[(res_metrics.fi_method1.isin(fimethod) | res_metrics.fi_method2.isin(fimethod)), :]
+    res_metrics = res_metrics.loc[(res_metrics.fi_method1.isin(fimethod) & res_metrics.fi_method2.isin(fimethod)), :]
 
     # Save names
     eval_names = res_metrics.loc[:, res_metrics.columns.isin(['repeat', 'fi_method1', 'fi_method2'])]
