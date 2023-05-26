@@ -33,7 +33,6 @@ sh run.sh
 Checkout plots and tables in:
 ```
 /results/
-/plots/
 ```
 
 Interactive python DASH app:
