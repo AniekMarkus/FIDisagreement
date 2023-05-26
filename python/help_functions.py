@@ -75,6 +75,15 @@ def wrapper_predict(ml_model, X, prob=True, threshold=0.5):
 
             pred_prob = ml_model.predict_proba(data_x)
             pred_prob = pred_prob[:, 1]
+        else:
+            # Try simple predict
+            if not isinstance(X, np.ndarray):
+                data_x = X.values
+            else:
+                data_x = X
+
+            pred_prob = ml_model.predict_proba(data_x)
+            pred_prob = pred_prob[:, 1]
 
     if prob:
         return pred_prob

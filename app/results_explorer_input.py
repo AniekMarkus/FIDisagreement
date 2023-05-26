@@ -5,32 +5,34 @@ import os
 import re
 import plotly.graph_objs as go
 
-root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
-output_folder = Path(root_folder + "/results/output_" + str(date.today()))
+root_folder = "..."
+output_folder = Path(root_folder + "/results/output_2023-ICML")
 
 settings_cols = ['data', 'repeat', 'version', 'model', 'fi_method']
 
 files = os.listdir(output_folder / "feature_importance")
-datasets = list(set(map(lambda v: v.split(sep="-")[0], files)))
-versions = list(set(map(lambda v: v.split(sep="-")[2], files)))
-models = list(set(map(lambda v: v.split(sep="-")[3], files)))
-fimethods = list(set(map(lambda v: v.split(sep="-")[4], files)))
 
-eval_metrics = ['overlap', 'rank', 'sign', 'ranksign',
-           'pearson', 'kendalltau', 'pairwise_comp', 'mae', 'rmse', 'r2']
-
-color_dict = {'coefficient': '#ecda9a', # TODO: change colors
+color_dict = {'coefficient': '#ecda9a',
               'permutation_auc': '#f3ad6a',
               'permutation_mse': '#f66356',
               'permutation_ba': '#f97b57',
-              'loco_auc': '#f3ad6a',
-              'loco_mse': '#f66356',
-              'loco_ba': '#f97b57',
+              'loco_auc': '#9467bd',
+              'loco_mse': '#ba9cd4',
+              'loco_ba': '#dfd1eb',
               'kernelshap': '#96d2a4',
-              #'kernelshap_1000': '#4da284',
               'sage_marginal': '#68abb8',
               'sage_conditional': '#2a5674'}
-# defaults ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+
+FI_name_dict = {'coefficient': 'coefficient',
+              'permutation_auc': 'PFI AUC',
+              'permutation_mse': 'PFI MSE',
+              'permutation_ba': 'PFI BA',
+              'loco_auc': 'LOCO AUC',
+              'loco_mse': 'LOCO MSE',
+              'loco_ba': 'LOCO BA',
+              'kernelshap': 'KernelSHAP',
+              'sage_marginal': 'SAGE-M',
+              'sage_conditional': 'SAGE-C'}
 
 fileName = output_folder / "data" / "modify_params.csv"
 
@@ -41,12 +43,19 @@ if os.path.exists(fileName):
 else:
     modify_params = {'version': 'v0'}
 
+# PAPER
 std_layout = go.Layout(
-    xaxis=dict(gridcolor="#2f3445"),
-    yaxis=dict(gridcolor="#2f3445"),
-    # legend=dict(x=0, y=1.05, orientation="v"),
     margin=dict(l=100, r=10, t=50, b=40),
-    plot_bgcolor="#282b38",
-    paper_bgcolor="#282b38",
-    font={"color": "#a5b1cd"},
+    showlegend=False
 )
+
+# APP
+# std_layout = go.Layout(
+#     xaxis=dict(gridcolor="#2f3445"),
+#     yaxis=dict(gridcolor="#2f3445"),
+#     # legend=dict(x=0, y=1.05, orientation="v"),
+#     margin=dict(l=100, r=10, t=50, b=40),
+#     plot_bgcolor="#282b38",
+#     paper_bgcolor="#282b38",
+#     font={"color": "#a5b1cd"},
+# )

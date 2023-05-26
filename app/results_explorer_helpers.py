@@ -109,8 +109,7 @@ def get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, 
     cols = res_metrics.columns.isin(['r2'])
     res_metrics.loc[:, cols]=res_metrics.loc[:, cols].apply(lambda c: normalise(c), axis=0)
 
-
-# Take mean across different metrics
+    # Take mean across different metrics
     if summarize:
         res_metrics = res_metrics.mean(axis=1)
 

@@ -94,11 +94,13 @@ def loco_ba(model, X, y, data):
 def check_convergence(wrapper_fi, start, step, stop=0.025):
     # Start values
     fi_values, elapsed_time = wrapper_fi(start)
+    # pd.DataFrame(fi_values).to_csv(str(f"convergence_fi-{start}.csv"))
     value=start+step
     converged=False
 
     while not converged:
         fi_values_new, elapsed_time_new = wrapper_fi(value)
+        # pd.DataFrame(fi_values_new).to_csv(str(f"convergence_fi-{value}.csv"))
 
         dist = np.linalg.norm(fi_values-fi_values_new)
 

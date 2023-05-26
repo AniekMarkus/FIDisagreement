@@ -265,7 +265,7 @@ def heatmap_disagreement(output_folder,
     res_metrics, eval_names = get_metrics(output_folder, dataset, version, model, fimethod, eval_metrics, summarize)
 
     # For visualization purposes show small number instead of zero
-    res_metrics[res_metrics == 0] = 0.01
+    # res_metrics[res_metrics == 0] = 0.01
 
     # Combine and translate wide to long format
     metrics_data = pd.concat([eval_names, res_metrics.rename('disagreement')], axis=1)
@@ -283,8 +283,8 @@ def heatmap_disagreement(output_folder,
 
     # Order rows and columns
     order = [i for i in list(FI_name_dict.values()) if i in mean_data.index]
-    mean_data = mean_data.loc[:,order]
-    mean_data = mean_data.loc[order,:]
+    mean_data = mean_data.loc[:, order]
+    mean_data = mean_data.loc[order, :]
 
     # Generate a mask for the upper triangle
     mask = np.triu(np.ones_like(mean_data, dtype=bool), k=1)
@@ -298,6 +298,78 @@ def heatmap_disagreement(output_folder,
                          yaxis_autorange='reversed')
 
     figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap-{fig_name}.png',
+                       width=500, height=500)
+
+    return figure
+
+
+
+def heatmap_disagreement_changes(output_folder,
+                         fig_name,
+                         dataset = "iris",
+                         version = "v1",
+                         model = "logistic",
+                         fimethod = ["permutation_auc", "permutation_ba"],
+                         eval_metrics = ["overlap", "mae"]):
+
+    # Need one output value
+    if len(eval_metrics) > 1:
+        summarize = True
+    else:
+        summarize = False
+
+    # TODO: make dependent on dataset?
+    dict_changes={ # Baseline versus after change
+        'v1': ['v0', 'v16'],
+        'v2': ['v0', 'v24'],
+        'v3': ['v0', 'v33'],
+        'v4': ['v0', 'v43'],
+        'v5': ['v0', 'v52']}
+
+    comparison=dict_changes[version]
+
+    # Get feature importance metrics (BASELINE)
+    res_metrics_baseline, eval_names_baseline = get_metrics(output_folder, dataset, comparison[0], model, fimethod, eval_metrics, summarize)
+    metrics_baseline = pd.concat([eval_names_baseline, res_metrics_baseline.rename('disagreement')], axis=1)
+    metrics_baseline.drop("repeat", axis=1, inplace=True)
+
+    metrics_baseline = metrics_baseline.groupby(by=['fi_method1', 'fi_method2']).agg(['mean'])
+    metrics_baseline = metrics_baseline.droplevel(axis=1, level=0).reset_index()
+
+    # Get feature importance metrics (AFTER CHANGE)
+    res_metrics_change, eval_names_change = get_metrics(output_folder, dataset, comparison[1], model, fimethod, eval_metrics, summarize)
+    metrics_change = pd.concat([eval_names_change, res_metrics_change.rename('disagreement')], axis=1)
+    metrics_change.drop("repeat", axis=1, inplace=True)
+
+    metrics_change = metrics_change.groupby(by=['fi_method1', 'fi_method2']).agg(['mean'])
+    metrics_change = metrics_change.droplevel(axis=1, level=0).reset_index()
+
+    # Combine and translate wide to long format
+    metrics_data = pd.merge(metrics_baseline, metrics_change, on=['fi_method1', 'fi_method2'], how='inner', suffixes=("_baseline", "_change"))
+    metrics_data['disagreement'] = (metrics_data['mean_change'] - metrics_data['mean_baseline']) / metrics_data['mean_baseline']
+
+    # Change names cols
+    metrics_data.replace({"fi_method1": FI_name_dict, "fi_method2": FI_name_dict}, inplace=True)
+
+    mean_data = pd.pivot(metrics_data, index="fi_method1", columns="fi_method2", values="disagreement")
+
+    # Order rows and columns
+    order = [i for i in list(FI_name_dict.values()) if i in mean_data.index]
+    mean_data = mean_data.loc[:,order]
+    mean_data = mean_data.loc[order,:]
+
+    # Generate a mask for the upper triangle
+    mask = np.triu(np.ones_like(mean_data, dtype=bool), k=1)
+    df_mask = mean_data.mask(mask)
+
+    figure = go.Figure(data=go.Heatmap(z=df_mask.to_numpy(), zmin=-1, zmax=1, colorscale='RdBu', texttemplate="%{text:.2f}",
+                                       text=df_mask.to_numpy(), x=mean_data.index, y=mean_data.columns, showscale=False))
+
+    figure.update_layout(# xaxis={'categoryarray': order},
+        # yaxis={'categoryarray': order},
+        yaxis_autorange='reversed')
+
+    figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-heatmap-changes-{fig_name}.png',
                        width=500, height=500)
 
     return figure
@@ -321,6 +393,8 @@ def complexity_plot(output_folder,
     version_list = list(filter(lambda v: re.findall(version, v), version_list))
     version_list = list(set(map(lambda v: v.split(sep="-")[1], version_list)))
 
+    version_list = ['v0'] + version_list
+
     all_metrics = pd.DataFrame()
 
     for v in version_list:
@@ -340,27 +414,59 @@ def complexity_plot(output_folder,
 
     plot_data = pd.merge(plot_data, modify_params, on='version')
 
+    # Impute baseline values
+    if dataset == "german":
+        baseline={'v1': 24,
+                  'v2': 1000,
+                  'v3': 300,
+                  'v4': 1,
+                  'v5': 0}
+    elif dataset == "compas":
+        baseline={'v1': 7,
+                  'v2': 6172,
+                  'v3': 2809,
+                  'v4': 1,
+                  'v5': 0}
+
+    plot_data.fillna(value=baseline[version], inplace=True)
+
+    # Change names cols
+    plot_data.replace({"fi_method1": FI_name_dict}, inplace=True)
+
+    # Order rows and columns (just for legend)
+    # t = pd.CategoricalDtype(categories=list(FI_name_dict.values()), ordered=True)
+    # plot_data['fi_method1'] = pd.Series(plot_data.fi_method1, dtype=t)
+    # plot_data.sort_values(by=['fi_method1'], inplace=True)
+
     figure = go.Figure(layout=std_layout)
-    for fi in all_metrics.fi_method1.unique():
+    for fi in plot_data.fi_method1.unique():
         values = plot_data.loc[plot_data.fi_method1 == fi, :].reset_index(drop=True)
 
+        if fi == "PFI AUC":
+            x_ticks = values.value
+
+        value = [i for i in FI_name_dict if FI_name_dict[i]==fi]
         figure.add_traces([
             go.Scatter(
                 name=fi,
                 x=values.value,  # version
                 y=values.disagreement,
                 # mode='markers',
-                line=dict(color=color_dict[fi])
+                line=dict(color=color_dict[value[0]])
             )])
 
-    x_axis={'v1': 'Number of features',
-            'v2': 'Number of observations',
-            'v3': 'Number of outcomes',
-            'v4': 'Feature correlation',
-            'v5': 'Prevalence of features'}
+    # x_axis={'v1': 'Number of features',
+    #         'v2': 'Number of observations',
+    #         'v3': 'Number of outcomes',
+    #         'v4': 'Feature correlation',
+    #         'v5': 'Prevalence of features'}
 
-    figure.update_layout(xaxis=dict(title=x_axis[version], tickmode='array', tickvals=values.value),
+    figure.update_layout(xaxis=dict(title="Increasing complexity", tickmode='array', tickvals=x_ticks), # x_axis[version]
                          yaxis=dict(title="Agreement", range=[0, 1]))
+
+    # Sort all by increasing complexity
+    if version == "v5":
+        figure.update_layout(xaxis=dict(autorange="reversed"))
 
     figure.write_image(output_folder / "plots" / f'{dataset}-{version}-{model}-fi_complexity-{fig_name}.png',
                        width=500, height=500)

@@ -2,10 +2,10 @@ from scipy.io import arff
 import pandas as pd
 import numpy as np
 
-root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
+root_folder = "..."
 datasets = ["iris", "vote", "compas", "german", "copdmortality", "heartfailurestroke"]
 
-data = datasets[3]
+data = datasets[0]
 
 # Load data arff
 input_data = arff.loadarff(root_folder + "/input-data/" + data + ".arff")
@@ -30,9 +30,20 @@ elif data == "german":
 fileName = root_folder + "/input-data/" + data + ".csv"
 input_data.to_csv(fileName, index=False)
 
+# Import german credit data
+# german_credit <- read.table("http://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data-numeric")
+
+# colnames(german_credit) <- c("chk_acct", "duration", "credit_his", "purpose", 
+#                            "amount", "saving_acct", "present_emp", "installment_rate", "sex", "other_debtor", 
+#                            "present_resid", "property", "age", "other_install", "housing", "n_credits", 
+#                            "job", "n_people", "telephone", "foreign", "class")
+
+# colnames(german_credit) <-c(colnames(german_credit)[1:24], "class")
+# german_credit[,"class"] <- ifelse(german_credit[,"class"] == 1, 0, 1) # 1 = Good, 2 = Bad
+
 # Change to arff in R
-# data <- "compas"
+# data <- "german"
 # fileName <- paste0("/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement/input-data/", data)
 # data <- read.csv(paste0(fileName,".csv"))
-# data$class <- ifelse(data$class == 1, 0, 1) # switched labels for german (predict minority class)
 # farff::writeARFF(data, paste0(fileName, ".arff"))
+
