@@ -114,7 +114,7 @@ if __name__ =='__main__':
     i=None
 
     # SETTINGS
-    root_folder = "/Users/aniekmarkus/Documents/Git/_Projects/FIDisagreement"
+    root_folder = "..."
 
     # PARAMETERS
     parser = argparse.ArgumentParser(
