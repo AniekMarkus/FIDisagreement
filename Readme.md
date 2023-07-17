@@ -10,7 +10,7 @@ Run experiments for specific settings:
 * [repeats] in [1, 2, 3, etc.]
 
 ```
-   python python/experiments.py [data] [model] [fi_method] [repeats]
+python python/experiments.py [data] [model] [fi_method] [repeats]
 ```
 
 Run all experiments:
@@ -33,7 +33,6 @@ sh run.sh
 Checkout plots and tables in:
 ```
 /results/
-/plots/
 ```
 
 Interactive python DASH app:
